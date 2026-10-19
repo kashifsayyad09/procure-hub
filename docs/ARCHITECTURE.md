@@ -10,4 +10,4 @@ Target architecture is defined in the master build prompt: 11 FastAPI business s
 - `src/services/mockData.ts`: sample data and a simulated fetch, replaced by real APIs from Phase 2
 
 ## Performance
-Three.js and Recharts are in lazy chunks and are not part of the entry bundle (entry about 118 kB gzip).
+Three.js and Recharts are in lazy chunks and are not part of the entry bundle (entry about 120 kB gzip).

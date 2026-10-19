@@ -11,7 +11,11 @@ Monorepo, Vite/React/TS/Tailwind frontend, design tokens, UI components (Button,
 ## Tests
 See `docs/TEST_REPORT.md`.
 
+## Maintenance
+Dependency upgrade completed after delivery: 0 audit findings, clean install without warnings (see CHANGELOG).
+
 ## Known issues
+- Pages not re-inspected visually after the Tailwind 4 upgrade.
 - Browser-based responsive and visual inspection not performed (no browser in the build environment).
 - `docker compose` not executed (Docker unavailable in the build environment).
 - Proprietary fonts KMR Apparat and Suisse Intl are not bundled; fallbacks are used.

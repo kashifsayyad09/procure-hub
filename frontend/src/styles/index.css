@@ -1,6 +1,5 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+@config "../../tailwind.config.js";
 
 /* Tokens: Design.md palette. Space-separated RGB so Tailwind opacity modifiers work. */
 :root {

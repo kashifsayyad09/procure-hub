@@ -10,6 +10,8 @@ export default tseslint.config(
     files: ['**/*.{ts,tsx}'],
     languageOptions: { globals: { ...globals.browser, ...globals.node } },
     plugins: { 'react-hooks': reactHooks },
-    rules: { ...reactHooks.configs.recommended.rules },
+    // Classic hooks rules only; the React Compiler rules in plugin v7 do not apply (no compiler) and
+    // flag the intentional mutable buffers used by Three.js.
+    rules: { 'react-hooks/rules-of-hooks': 'error', 'react-hooks/exhaustive-deps': 'warn' },
   },
 )

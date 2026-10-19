@@ -22,3 +22,7 @@ class RO { observe() {} unobserve() {} disconnect() {} }
 globalThis.ResizeObserver = globalThis.ResizeObserver ?? (RO as unknown as typeof ResizeObserver)
 // jsdom has no WebGL: report "unsupported" so 3D falls back to the static backdrop.
 HTMLCanvasElement.prototype.getContext = (() => null) as unknown as HTMLCanvasElement['getContext']
+
+// Lazy route chunks are transformed on first use; give cold starts room.
+import { configure } from '@testing-library/react'
+configure({ asyncUtilTimeout: 5000 })

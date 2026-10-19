@@ -5,6 +5,8 @@ receiving, three-way invoice matching, notifications, audit and the SI-Talker as
 
 **Status:** Phase 1 of 17 (foundation and UI design system). See `PHASE_STATUS.md`.
 
+Requires Node.js 22.12 or newer.
+
 ## Quick start
 
 ```bash

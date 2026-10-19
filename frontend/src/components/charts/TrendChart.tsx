@@ -11,7 +11,7 @@ export function TrendChart({ kind, data, unit = '', label }: { kind: 'bar' | 'ar
       <XAxis dataKey="name" stroke={c.muted} tickLine={false} axisLine={false} fontSize={12} />
       <YAxis stroke={c.muted} tickLine={false} axisLine={false} fontSize={12} width={44} />
       <Tooltip
-        formatter={(v: number) => [`${v}${unit}`, label]}
+        formatter={(v) => [`${v}${unit}`, label]}
         contentStyle={{ background: c.surface, border: `1px solid ${c.grid}`, borderRadius: 16, color: c.ink }}
         cursor={{ fill: c.grid, opacity: 0.4 }}
       />
