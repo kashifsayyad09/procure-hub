@@ -1,0 +1,64 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Tokens: Design.md palette. Space-separated RGB so Tailwind opacity modifiers work. */
+:root {
+  --bg: 248 248 248;       /* #f8f8f8 */
+  --surface: 255 255 255;
+  --panel: 230 229 225;    /* #e6e5e1 */
+  --line: 230 227 220;     /* #e6e3dc */
+  --pill: 230 227 220;
+  --ink: 26 26 25;         /* #1a1a19 */
+  --muted: 108 105 98;     /* #6c6962 */
+  --accent: 227 178 16;    /* #e3b210 */
+  --accent2: 223 186 52;   /* #dfba34 */
+  --violet: 166 138 255;   /* #a68aff */
+  --violet-ink: 71 20 110; /* #47146e */
+  --ok: 27 94 56;
+  --bad: 159 38 28;
+  color-scheme: light;
+}
+.dark {
+  --bg: 26 26 25;
+  --surface: 36 36 34;
+  --panel: 46 46 43;
+  --line: 62 61 56;
+  --pill: 54 53 49;
+  --ink: 248 248 248;
+  --muted: 176 173 164;
+  --violet-ink: 217 205 255;
+  --ok: 120 205 152;
+  --bad: 255 150 138;
+  color-scheme: dark;
+}
+
+@layer base {
+  html { background: rgb(var(--bg)); }
+  body {
+    @apply bg-bg font-body text-ink antialiased;
+    font-size: 17px;
+    line-height: 1.55;
+    letter-spacing: -0.005em;
+  }
+  h1, h2, h3, h4 { @apply font-display font-medium; }
+  :focus-visible { outline: 2px solid rgb(var(--ink)); outline-offset: 2px; border-radius: 8px; }
+  ::selection { background: #d9cdff; color: #1a1a19; }
+}
+
+@layer components {
+  .display-xl { font-size: clamp(2.75rem, 8vw, 6.5rem); line-height: 0.96; @apply font-display font-medium tracking-display; }
+  .display-lg { font-size: clamp(2.25rem, 5vw, 4rem); line-height: 1; @apply font-display font-medium tracking-display; }
+  .skip-link { @apply absolute left-4 top-4 z-[100] -translate-y-24 rounded-btn bg-ink px-4 py-2 text-bg; }
+  .skip-link:focus { @apply translate-y-0; }
+}
+
+/* Reduced motion: GSAP code checks the same media query; this guards CSS transitions. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
