@@ -12,3 +12,7 @@ venv/
 *.zip
 .DS_Store
 coverage/
+.pytest_cache/
+.ruff_cache/
+*.db
+*.pyc

@@ -7,5 +7,5 @@ OUT="$(dirname "$ROOT")/procurehub-phase-$N.zip"
 rm -f "$OUT"
 cd "$(dirname "$ROOT")"
 zip -rq "$OUT" "$(basename "$ROOT")" \
-  -x "*/node_modules/*" "*/dist/*" "*/.venv/*" "*/__pycache__/*" "*/.env" "*.tfstate*" "*/.terraform/*" "*.zip"
+  -x "*/node_modules/*" "*/dist/*" "*/.venv/*" "*/__pycache__/*" "*/.pytest_cache/*" "*/.ruff_cache/*" "*.db" "*.pyc" "*/.env" "*.tfstate*" "*/.terraform/*" "*.zip"
 echo "$OUT"

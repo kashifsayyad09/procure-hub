@@ -111,10 +111,10 @@ export default function LandingPage() {
           <ul className="mt-u16 grid gap-u8 sm:grid-cols-2 lg:grid-cols-3">
             {ROLES.map((r) => (
               <li key={r.id} data-scroll>
-                <Link to={r.path} className="group flex h-full flex-col justify-between gap-u10 rounded-card border border-line bg-surface p-u12 transition-colors duration-200 hover:border-ink">
-                  <div><h3 className="text-2xl">{r.label}</h3><p className="mt-u3 text-muted">{r.summary}</p></div>
-                  <span className="inline-flex items-center gap-u3 font-medium">Preview workspace <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" aria-hidden /></span>
-                </Link>
+                <div className="h-full rounded-card border border-line bg-surface p-u12">
+                  <h3 className="text-2xl">{r.label}</h3>
+                  <p className="mt-u3 text-muted">{r.summary}</p>
+                </div>
               </li>
             ))}
           </ul>

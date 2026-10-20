@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, NavLink } from 'react-router-dom'
 import { ChevronsLeft, ChevronsRight } from 'lucide-react'
 import clsx from 'clsx'
 import { gsap } from '@/animations/gsap'
@@ -32,8 +32,8 @@ function NavList({ role, collapsed }: { role: RoleInfo; collapsed: boolean }) {
           const base = 'flex min-h-[44px] w-full items-center gap-u6 rounded-ctl px-u7 text-left'
           return (
             <li key={item.label}>
-              {i === 0 ? (
-                <Link to={role.path} aria-current="page" title={collapsed ? item.label : undefined} className={clsx(base, 'bg-accent text-on-accent')}>{body}</Link>
+              {i === 0 || item.to ? (
+                <NavLink to={i === 0 ? role.path : item.to!} end title={collapsed ? item.label : undefined} className={({ isActive }) => clsx(base, isActive ? 'bg-accent text-on-accent' : 'hover:bg-pill')}>{body}</NavLink>
               ) : (
                 <span aria-disabled="true" title={`${item.label} arrives in Phase ${item.phase}`} className={clsx(base, 'cursor-not-allowed text-muted')}>{body}</span>
               )}

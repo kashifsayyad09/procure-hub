@@ -26,3 +26,12 @@ HTMLCanvasElement.prototype.getContext = (() => null) as unknown as HTMLCanvasEl
 // Lazy route chunks are transformed on first use; give cold starts room.
 import { configure } from '@testing-library/react'
 configure({ asyncUtilTimeout: 5000 })
+
+import { setAccessToken } from '@/services/api'
+import { useAuthStore } from '@/stores/authStore'
+afterEach(() => {
+  vi.unstubAllGlobals()
+  setAccessToken(null)
+  useAuthStore.setState({ status: 'loading', user: null })
+  localStorage.clear()
+})

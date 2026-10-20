@@ -1,11 +1,12 @@
-import { Outlet, useLocation } from 'react-router-dom'
+import { Outlet } from 'react-router-dom'
+import { useAuthStore } from '@/stores/authStore'
 import { roleById, ROLES } from '@/types/roles'
 import { Sidebar } from './Sidebar'
 import { Topbar } from './Topbar'
 
 export function AppShell() {
-  const { pathname } = useLocation()
-  const role = roleById(pathname.split('/')[2]) ?? ROLES[0]
+  const userRole = useAuthStore((s) => s.user?.role)
+  const role = roleById(userRole) ?? ROLES[0]
   return (
     <div className="flex min-h-screen">
       <a href="#main" className="skip-link">Skip to content</a>
