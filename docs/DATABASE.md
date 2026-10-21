@@ -11,5 +11,5 @@ Migration `0001` (Alembic, `backend/services/auth-service/migrations`):
 - `refresh_tokens`: id, user_id (FK, cascade delete), family_id, token_hash (unique), expires_at, created_at, revoked_at, replaced_by, user_agent. Indexed on user_id and family_id.
 - Timestamps are naive UTC. Expired and revoked tokens are not purged yet; a cleanup job is a later task.
 
-Verified: the migration runs on SQLite, matches the SQLAlchemy models (autogenerate diff is empty), downgrades cleanly, and renders valid MySQL DDL in offline mode. Not yet executed against live MySQL.
+Verified on SQLite and on a real MySQL 8.0.46 server: the migration upgrades, matches the SQLAlchemy models (autogenerate diff is empty), downgrades and upgrades again. MySQL 8.4 itself (the image Compose uses) was not available to test.
 `02-create-service-users.sh` creates `auth_svc` with rights on `auth_db` only; each new service adds its own user.

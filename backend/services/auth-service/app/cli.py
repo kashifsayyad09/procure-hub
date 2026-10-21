@@ -13,6 +13,7 @@ from sqlalchemy import select
 
 from .config import get_settings
 from .database import make_engine, make_session_factory
+from .dburl import resolve_database_url
 from .models import Role, User
 from .security import hash_password, password_policy_errors
 
@@ -39,7 +40,7 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("--name", required=True)
     args = parser.parse_args(argv)
     password = os.environ.get("ADMIN_PASSWORD") or getpass.getpass("Password: ")
-    engine = make_engine(get_settings().database_url)
+    engine = make_engine(resolve_database_url(get_settings().database_url))
     uid = create_admin(args.email, args.name, password, make_session_factory(engine))
     print(f"Created administrator {args.email} ({uid})")
 

@@ -1,4 +1,5 @@
 import io
+import os
 from pathlib import Path
 
 import pytest
@@ -92,3 +93,43 @@ def test_settings_require_secret_from_environment(monkeypatch):
     from app.config import Settings
     with pytest.raises(ValidationError):
         Settings(_env_file=None)
+
+
+def test_database_url_survives_special_characters_in_the_password():
+    from sqlalchemy import create_engine
+
+    from app.dburl import resolve_database_url
+
+    for pw in ["Pass@word1", "a:b/c#d1", "p%40ss", "sp ace1", "q'uote\"1", "100%$ure!"]:
+        env = {"DB_HOST": "mysql", "DB_NAME": "auth_db", "DB_USER": "auth_svc", "DB_PASSWORD": pw}
+        url = create_engine(resolve_database_url(env=env)).url
+        assert (url.host, url.port, url.username, url.password, url.database) == ("mysql", 3306, "auth_svc", pw, "auth_db")
+        # and it survives being rendered and parsed again, as Alembic offline mode does
+        from sqlalchemy.engine import make_url
+        assert make_url(url.render_as_string(hide_password=False)).password == pw
+
+
+def test_database_url_precedence_and_errors():
+    from app.dburl import resolve_database_url
+
+    assert resolve_database_url("sqlite://", env={"DATABASE_URL": "other"}) == "sqlite://"
+    assert resolve_database_url(env={"DATABASE_URL": "sqlite://"}) == "sqlite://"
+    with pytest.raises(RuntimeError, match="DB_PASSWORD"):
+        resolve_database_url(env={"DB_HOST": "h", "DB_NAME": "n", "DB_USER": "u"})
+
+
+@pytest.mark.skipif(not os.environ.get("TEST_DATABASE_URL"), reason="set TEST_DATABASE_URL to a scratch MySQL database")
+def test_migration_on_a_real_mysql_server(monkeypatch):
+    url = os.environ["TEST_DATABASE_URL"]
+    eng = create_engine(url)
+    Base.metadata.drop_all(eng)
+    with eng.begin() as conn:
+        conn.exec_driver_sql("DROP TABLE IF EXISTS alembic_version")
+    cfg = _cfg(url, monkeypatch)
+    command.upgrade(cfg, "head")
+    with eng.connect() as conn:
+        assert compare_metadata(MigrationContext.configure(conn), Base.metadata) == []
+    command.downgrade(cfg, "base")
+    assert set(inspect(eng).get_table_names()) <= {"alembic_version"}
+    command.upgrade(cfg, "head")
+    command.downgrade(cfg, "base")

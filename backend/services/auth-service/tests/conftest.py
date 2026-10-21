@@ -1,3 +1,5 @@
+import os
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
@@ -18,9 +20,19 @@ def settings():
 
 @pytest.fixture
 def engine():
-    eng = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
-    Base.metadata.create_all(eng)
-    return eng
+    """In-memory SQLite by default. Set TEST_DATABASE_URL to a scratch MySQL database to run the whole suite on MySQL."""
+    url = os.environ.get("TEST_DATABASE_URL")
+    if url:
+        eng = create_engine(url, pool_pre_ping=True)
+        Base.metadata.drop_all(eng)
+        Base.metadata.create_all(eng)
+        yield eng
+        Base.metadata.drop_all(eng)
+        eng.dispose()
+    else:
+        eng = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
+        Base.metadata.create_all(eng)
+        yield eng
 
 
 @pytest.fixture

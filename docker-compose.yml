@@ -1,4 +1,13 @@
 # Local environment. Services are added as they are built.
+# Database settings are passed as separate variables so a password may contain any character.
+x-auth-env: &auth-env
+  DB_HOST: mysql
+  DB_PORT: "3306"
+  DB_NAME: auth_db
+  DB_USER: auth_svc
+  DB_PASSWORD: ${AUTH_DB_PASSWORD}
+  JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env}
+
 services:
   mysql:
     image: mysql:8.4
@@ -22,9 +31,7 @@ services:
   auth-migrate:
     build: ./backend/services/auth-service
     command: ["alembic", "upgrade", "head"]
-    environment:
-      DATABASE_URL: mysql+pymysql://auth_svc:${AUTH_DB_PASSWORD}@mysql:3306/auth_db
-      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env}
+    environment: *auth-env
     depends_on:
       mysql:
         condition: service_healthy
@@ -34,8 +41,7 @@ services:
     build: ./backend/services/auth-service
     restart: unless-stopped
     environment:
-      DATABASE_URL: mysql+pymysql://auth_svc:${AUTH_DB_PASSWORD}@mysql:3306/auth_db
-      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env}
+      <<: *auth-env
       COOKIE_SECURE: "false"   # local http only
     ports:
       - "127.0.0.1:8001:8001"

@@ -2,11 +2,11 @@ from collections.abc import Iterator
 
 from fastapi import Request
 from sqlalchemy import create_engine
-from sqlalchemy.engine import Engine
+from sqlalchemy.engine import URL, Engine
 from sqlalchemy.orm import Session, sessionmaker
 
 
-def make_engine(url: str) -> Engine:
+def make_engine(url: str | URL) -> Engine:
     # pool_pre_ping drops dead connections (RDS failover, idle timeouts); recycle stays under MySQL wait_timeout
     return create_engine(url, pool_pre_ping=True, pool_recycle=1800, future=True)
 

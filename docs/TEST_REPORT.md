@@ -11,7 +11,7 @@ Environment: Node 22.22, Python 3.12, Linux container. No Docker, no browser.
 | Frontend production build | `npm run build` | Pass; Three.js and charts remain lazy chunks |
 | Frontend dependency audit | `npm audit` | 0 vulnerabilities |
 | Auth-service lint | `cd backend/services/auth-service && ruff check .` | Pass |
-| Auth-service tests | `pytest -q` | 56 of 56 passed, 96% line coverage |
+| Auth-service tests | `pytest -q` | 58 passed and 1 skipped on SQLite (the skipped one is the MySQL-only migration test); 59 of 59 passed on MySQL; about 96% line coverage |
 | Python dependency audit | `pip-audit -r requirements.txt` | No known vulnerabilities |
 | Layout and secret scan | `scripts/validate-project.sh` | Pass |
 | Live HTTP check | real uvicorn on SQLite behind the Vite dev proxy, driven with curl | Pass (below) |
@@ -24,8 +24,23 @@ Environment: Node 22.22, Python 3.12, Linux container. No Docker, no browser.
 
 **Live check:** login through the proxy returned an `HttpOnly; SameSite=strict; Path=/api/v1/auth` cookie and `no-store`; refresh issued a new token; the admin created a user; that employee got 403 on `/users`; no token got 401; logout then refresh returned 401; `/health/ready` returned ok.
 
+## Docker configuration testing (added after delivery)
+Docker is not available in the build environment, so images were not built and Compose was not started. Instead:
+| Check | Result |
+|---|---|
+| Compose file: service references, build contexts, bind mounts, volumes, variables all defined in `.env.example`, ports bound to 127.0.0.1, `$$` escaping in the healthcheck | Pass (scripted) |
+| Dockerfile equivalent: copy only the files the Dockerfile copies, clean `pip install -r requirements.txt` (production pins only), then run the `auth-migrate` command, the first-admin command, the container `CMD`, and the Dockerfile `HEALTHCHECK` command | Pass |
+| Service refuses to start without `JWT_SECRET` | Pass |
+| MySQL init scripts run on a real MySQL 8.0.46: 11 databases created, `auth_svc` user created, re-run is safe, access to another database denied | Pass |
+| Init script safety: missing password fails, a quote is rejected before any SQL is sent, `$` and backticks are not expanded | Pass |
+| Full backend suite on real MySQL | 59 of 59 passed (includes the migration upgrade, drift check, downgrade) |
+| Live service on real MySQL: migration, admin CLI, readiness, login, create user, case-insensitive duplicate (409), search; database holds argon2id hashes and 64-character refresh-token hashes; logs contain no passwords | Pass |
+| **Defect found and fixed:** DB passwords containing `@` or `%` broke `DATABASE_URL` | Fixed, with tests |
+
+Still not exercised: building the image, Compose networking and `depends_on` ordering, the in-container healthchecks, the `mysql:8.4` image (tested on 8.0), and how the MySQL image runs init scripts.
+
 ## Not executed
-- The auth service against live MySQL 8.4, `docker compose up`, the Docker image build and the `02-create-service-users.sh` script (no Docker here). The compose file parses and the script passes `bash -n`.
+- `docker compose up`, the Docker image build, and MySQL 8.4 specifically (see above for what was tested instead).
 - Real-browser checks: responsive layout, the Phase 2 screens (sign-in, Users page), the Three.js scene, keyboard and screen-reader behaviour, contrast measurement. Tailwind 4 output was checked for token presence only.
 - Load, penetration and cross-browser testing.
 

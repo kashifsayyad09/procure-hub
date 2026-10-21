@@ -1,5 +1,12 @@
 # Changelog
 
+## Phase 2 revision: Docker configuration testing
+### Fixed
+- A database password containing `@` or `%` corrupted `DATABASE_URL` and the service could not connect. Compose and the service now use separate `DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` variables (`DATABASE_URL` still works).
+- `.dockerignore` now excludes `.venv`, `*.db` and caches from the build context.
+### Added
+- Backend tests can run on a real MySQL server (`TEST_DATABASE_URL`), including a migration test. PowerShell command in the README. Notes on `$` in `.env` and on changing a database password.
+
 ## Phase 2 (0.2.0): Authentication and Authorization
 ### Added
 - Authentication microservice (FastAPI): login, logout, logout-all, refresh with rotation and reuse detection, change password, `/me`, user administration, health endpoints, OpenAPI.

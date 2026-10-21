@@ -9,6 +9,7 @@ from sqlalchemy.engine import Engine
 
 from .config import Settings, get_settings
 from .database import make_engine, make_session_factory
+from .dburl import resolve_database_url
 from .logging_setup import configure_logging, request_id_var
 from .routers import auth, users
 
@@ -18,7 +19,7 @@ log = logging.getLogger("http")
 def create_app(settings: Settings | None = None, engine: Engine | None = None) -> FastAPI:
     settings = settings or get_settings()
     configure_logging(settings.log_level)
-    engine = engine or make_engine(settings.database_url)
+    engine = engine or make_engine(resolve_database_url(settings.database_url))
 
     app = FastAPI(
         title="ProcureHub Authentication Service",

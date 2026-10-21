@@ -8,7 +8,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(extra="ignore", case_sensitive=False)
 
-    database_url: str
+    database_url: str | None = None  # or DB_HOST, DB_NAME, DB_USER, DB_PASSWORD (see app/dburl.py)
     jwt_secret: SecretStr
     jwt_issuer: str = "procurehub-auth"
     jwt_audience: str = "procurehub"

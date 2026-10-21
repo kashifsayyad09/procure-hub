@@ -15,11 +15,25 @@ Requires Node.js 22.12+, Python 3.12+, and Docker for the database.
 scripts/setup-local.sh                  # .env, frontend and auth-service dependencies
 # edit .env: set the passwords and JWT_SECRET
 docker compose up -d --build            # MySQL, migrations, auth service on :8001
-# create the first administrator (there is no default account)
+```
+Create the first administrator (there is no default account). The password is prompted for if you leave out `ADMIN_PASSWORD`; it needs 12+ characters with a letter and a number, and must not contain the name part of your email.
+
+macOS / Linux:
+```bash
 docker compose run --rm -e ADMIN_PASSWORD='<strong password>' auth-service \
   python -m app.cli create-admin --email you@company.com --name "Your Name"
+```
+Windows PowerShell:
+```powershell
+docker compose run --rm -e ADMIN_PASSWORD='<strong password>' auth-service `
+  python -m app.cli create-admin --email you@company.com --name "Your Name"
+```
+Then start the frontend:
+```bash
 cd frontend && npm run dev              # http://localhost:5173, /api is proxied to :8001
 ```
+
+**Changing a database password later:** MySQL creates its users only the first time the data volume is created. After editing `AUTH_DB_PASSWORD` in `.env`, run `docker compose down -v` (this deletes local data) and start again.
 
 Checks: `scripts/test-all.sh` (frontend typecheck, lint, tests, build; auth-service lint and tests).
 Without Docker, see `backend/services/auth-service/README.md` to run the service against any MySQL.
