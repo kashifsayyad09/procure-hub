@@ -6,7 +6,7 @@ FastAPI service: users, login/logout, argon2id password hashing, short-lived JWT
 ```bash
 cd backend/services/auth-service
 python -m venv .venv && . .venv/bin/activate            # Windows: .venv\Scripts\activate
-pip install -r requirements-dev.txt
+pip install -r requirements-dev.txt -e ../../shared
 export DB_HOST=127.0.0.1 DB_PORT=3306 DB_NAME=auth_db DB_USER=auth_svc DB_PASSWORD="<AUTH_DB_PASSWORD>"
 export JWT_SECRET="$(python -c 'import secrets;print(secrets.token_urlsafe(48))')"
 export COOKIE_SECURE=false                              # plain-http local development only

@@ -28,30 +28,9 @@ const done = (label: string, detail: string): TimelineStep => ({ label, detail, 
 const now = (label: string, detail: string): TimelineStep => ({ label, detail, state: 'current' })
 const next = (label: string, detail: string): TimelineStep => ({ label, detail, state: 'pending' })
 
-export const DASHBOARDS: Record<Role, DashboardData> = {
-  employee: {
-    headline: 'Your requests',
-    intro: 'See where each purchase stands and what happens next.',
-    stats: [
-      { id: 'open', label: 'Open requests', value: 6, note: '2 waiting on a manager' },
-      { id: 'approved', label: 'Approved this month', value: 4, note: 'Ready for sourcing' },
-      { id: 'spend', label: 'Requested value', value: 184500, prefix: '₹', note: 'Across all open requests' },
-      { id: 'deliveries', label: 'Deliveries due', value: 3, note: 'Within 7 days' },
-    ],
-    trend: { title: 'Requests raised per month', kind: 'bar', label: 'Requests', points: series([3, 5, 4, 7, 6, 9]) },
-    table: {
-      title: 'Recent requests', filterKey: 'status',
-      columns: [{ key: 'id', header: 'Request' }, { key: 'item', header: 'Item' }, { key: 'amount', header: 'Amount (₹)', right: true }, { key: 'status', header: 'Status', status: true }],
-      rows: [
-        { id: 'PR-2041', item: 'Laptops, design team', amount: 96000, status: 'Pending' },
-        { id: 'PR-2038', item: 'Standing desks', amount: 42000, status: 'Approved' },
-        { id: 'PR-2033', item: 'Conference licences', amount: 31500, status: 'Draft' },
-        { id: 'PR-2027', item: 'Printer toner', amount: 15000, status: 'Rejected' },
-      ],
-    },
-    timeline: { title: 'PR-2041 progress', steps: [done('Submitted', 'You sent it on 12 Oct'), now('Manager review', 'Waiting on Priya Nair'), next('Sourcing', 'Procurement raises an RFQ'), next('Delivery', 'Goods are received')] },
-    actions: [{ label: 'New purchase request', phase: 3 }, { label: 'Upload a document', phase: 3 }],
-  },
+export type SampleRole = Exclude<Role, 'employee'> // the employee dashboard uses the real Purchase Request service
+
+export const DASHBOARDS: Record<SampleRole, DashboardData> = {
   manager: {
     headline: 'Approvals',
     intro: 'Decide what is waiting and keep an eye on department spend.',
@@ -173,7 +152,7 @@ const LATENCY = import.meta.env.MODE === 'test' ? 0 : 450
 
 export const dashboardRequest = { failNext: false }
 
-export async function fetchDashboard(role: Role): Promise<DashboardData> {
+export async function fetchDashboard(role: SampleRole): Promise<DashboardData> {
   await new Promise((r) => setTimeout(r, LATENCY))
   if (dashboardRequest.failNext) {
     dashboardRequest.failNext = false

@@ -1,11 +1,14 @@
-# Next phase: Phase 3, Purchase Request Service
+# Next phase: Phase 4, Approval Service
 
-Objective: Purchase Request microservice (FastAPI, `purchase_request_db`, Alembic): create, edit, save as draft, submit; line items; listing and filtering; detail pages; lifecycle statuses; supporting-document metadata; API tests; employee frontend pages replacing sample data.
+Objective: Approval microservice (FastAPI, `approval_db`, Alembic): multi-step approval workflow, approve and reject with reasons, approval history, delegation hooks, manager approval dashboard, notification integration points, end-to-end approval tests.
 
-Reuse from Phase 2:
-- Service layout and app-factory pattern in `backend/services/auth-service` (config, JSON logging, request IDs, health endpoints, Dockerfile, ruff and pytest setup, migration test pattern).
-- JWT verification: same `JWT_SECRET`, issuer `procurehub-auth`, audience `procurehub`, `typ=access`. Put the verification code in `backend/shared` so services do not copy it. Check permissions such as `purchase_request:create`, `purchase_request:read_own`, `purchase_request:submit` from `app/permissions.py`.
-- `frontend/src/services/api.ts` (add a `purchaseRequestsApi`), `RequireAuth`, `DataTable`, `Modal`, `Drawer`, `ApprovalTimeline`.
-- Add a `purchase_request_svc` MySQL user in `infrastructure/docker/mysql-init/02-create-service-users.sh`, compose services, and a Vite proxy rule (or the API gateway) for `/api/v1/purchase-requests`.
+Open design question to settle first: how the Approval service learns about submitted requests and moves them to `approved` or `rejected`. Phase 3 keeps the Purchase Request service as the only writer of `purchase_request_db`. Recommended: the Purchase Request service exposes a small internal endpoint for status decisions that accepts only a service credential (not a user token), and the Approval service calls it after recording the decision. Phase 11 (SQS) later turns this into events with retries. Managers also need read access to the requests they must decide on; the Approval service should hold the approval records and a snapshot of what the manager needs, rather than reading another service's database.
 
-Constraints: no shared models or cross-database joins between services; ownership is enforced in the service (an employee reads only their own requests); no hardcoded secrets; keep one cumulative ZIP.
+Reuse from Phase 3:
+- Service layout and test patterns in `backend/services/purchase-request-service` (app factory, `service.py` business layer, ownership checks, version locking, MySQL test option, migration tests).
+- `backend/shared/procurehub_common` for roles, permissions (`approval:read`, `approval:decide`, `approval:delegate` already exist), token verification, logging and health routes.
+- `infrastructure/docker/db-bootstrap/bootstrap.sh`: add one `ensure_user approval_svc approval_db APPROVAL_DB_PASSWORD` line, the variable to `.env.example` and to the `db-init` service.
+- Compose pattern: `*-migrate` one-shot plus the service; Vite proxy rule for `/api/v1/approvals`.
+- Frontend: `RequireAuth`, `DataTable`, `Modal`, `Drawer`, `ApprovalTimeline`, `features/purchase-requests/timeline.ts`; replace the manager sample dashboard.
+
+Constraints: no shared models or cross-database joins; role and ownership rules enforced in the service; a manager must not approve their own request; keep one cumulative ZIP.

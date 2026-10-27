@@ -95,3 +95,10 @@ def test_permission_matrix_separation_of_duties():
     assert holders["approval:decide"] == [Role.MANAGER]
     assert "purchase_order:create" not in PERMISSIONS[Role.EMPLOYEE] | PERMISSIONS[Role.VENDOR]
     assert permissions_for("nonsense") == []
+
+
+def test_token_carries_name_and_email_and_shared_verifier_reads_them(settings):
+    from procurehub_common.tokens import verify_access_token
+    token, _ = create_access_token(settings, _user())
+    c = verify_access_token(token, secret="x" * 40, issuer=settings.jwt_issuer, audience=settings.jwt_audience)
+    assert (c.sub, c.role, c.name, c.email) == ("u-1", "manager", "A", "a@example.com")

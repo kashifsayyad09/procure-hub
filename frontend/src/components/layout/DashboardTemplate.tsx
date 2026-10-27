@@ -3,8 +3,8 @@ import { useQuery } from '@tanstack/react-query'
 import { gsap } from '@/animations/gsap'
 import { useGsap } from '@/animations/gsap/useGsap'
 import { staggerIn } from '@/animations/gsap/presets'
-import { fetchDashboard } from '@/services/mockData'
-import { roleById, type Role } from '@/types/roles'
+import { fetchDashboard, type SampleRole } from '@/services/mockData'
+import { roleById } from '@/types/roles'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Skeleton } from '@/components/ui/Skeleton'
@@ -27,7 +27,7 @@ function Loading() {
   )
 }
 
-export function DashboardTemplate({ role }: { role: Role }) {
+export function DashboardTemplate({ role }: { role: SampleRole }) {
   const info = roleById(role)!
   const { data, isLoading, isError, error, refetch } = useQuery({ queryKey: ['dashboard', role], queryFn: () => fetchDashboard(role) })
   const root = useRef<HTMLDivElement>(null)

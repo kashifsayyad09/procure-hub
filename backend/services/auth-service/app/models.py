@@ -1,9 +1,11 @@
 import uuid
 from datetime import UTC, datetime, timedelta
-from enum import StrEnum
 
+from procurehub_common.roles import Role
 from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+
+__all__ = ["Base", "RefreshToken", "Role", "User", "later", "new_id", "utcnow"]
 
 
 def utcnow() -> datetime:
@@ -17,16 +19,6 @@ def new_id() -> str:
 
 def later(**kw: float) -> datetime:
     return utcnow() + timedelta(**kw)
-
-
-class Role(StrEnum):
-    # Same identifiers the frontend uses in src/types/roles.ts
-    EMPLOYEE = "employee"
-    MANAGER = "manager"
-    PROCUREMENT = "procurement"
-    VENDOR = "vendor"
-    FINANCE = "finance"
-    ADMIN = "admin"
 
 
 class Base(DeclarativeBase):

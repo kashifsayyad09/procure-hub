@@ -1,5 +1,6 @@
 import type { SessionUser, TokenResponse, UserPage, UserRecord } from '@/types/auth'
 import type { Role } from '@/types/roles'
+import type { RequestDetail, RequestInput, RequestPage, RequestQuery, RequestsSummary, RequestDocument } from '@/features/purchase-requests/types'
 
 const BASE = '/api/v1'
 
@@ -20,7 +21,14 @@ export const registerSessionHandlers = (session: (t: TokenResponse) => void, fai
 function messageFrom(body: unknown, status: number): string {
   const d = (body as { detail?: unknown } | null)?.detail
   if (typeof d === 'string') return d
-  if (Array.isArray(d)) return d.map((x) => (typeof x === 'string' ? x : (x as { msg?: string }).msg ?? 'Invalid value')).join(' ')
+  if (Array.isArray(d)) {
+    return d.map((x) => {
+      if (typeof x === 'string') return x
+      const e = x as { msg?: string; loc?: unknown[] }
+      const field = e.loc?.filter((l) => typeof l === 'string' && l !== 'body').pop()
+      return field ? `${String(field).replace(/_/g, ' ')}: ${e.msg ?? 'invalid'}` : e.msg ?? 'Invalid value'
+    }).join(' ')
+  }
   return status >= 500 ? 'The server had a problem. Try again in a moment.' : 'Something went wrong. Try again.'
 }
 
@@ -99,4 +107,26 @@ export const usersApi = {
   },
   create: (body: { email: string; full_name: string; role: Role; password: string }) => request<UserRecord>('/users', { method: 'POST', body: JSON.stringify(body) }),
   update: (id: string, body: Partial<{ full_name: string; role: Role; is_active: boolean }>) => request<UserRecord>(`/users/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
+}
+
+export const purchaseRequestsApi = {
+  list(query: RequestQuery) {
+    const p = new URLSearchParams({ page: String(query.page), page_size: String(query.page_size) })
+    if (query.q) p.set('q', query.q)
+    if (query.status) p.set('status', query.status)
+    if (query.priority) p.set('priority', query.priority)
+    if (query.sort) p.set('sort', query.sort)
+    if (query.order) p.set('order', query.order)
+    return request<RequestPage>(`/purchase-requests?${p}`)
+  },
+  summary: () => request<RequestsSummary>('/purchase-requests/summary'),
+  get: (id: string) => request<RequestDetail>(`/purchase-requests/${id}`),
+  create: (body: RequestInput) => request<RequestDetail>('/purchase-requests', { method: 'POST', body: JSON.stringify(body) }),
+  update: (id: string, body: RequestInput & { version: number }) => request<RequestDetail>(`/purchase-requests/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
+  submit: (id: string) => request<RequestDetail>(`/purchase-requests/${id}/submit`, { method: 'POST' }),
+  cancel: (id: string, reason: string) => request<RequestDetail>(`/purchase-requests/${id}/cancel`, { method: 'POST', body: JSON.stringify({ reason }) }),
+  remove: (id: string) => request<void>(`/purchase-requests/${id}`, { method: 'DELETE' }),
+  addDocument: (id: string, doc: { file_name: string; content_type: string; size_bytes: number }) =>
+    request<RequestDocument>(`/purchase-requests/${id}/documents`, { method: 'POST', body: JSON.stringify(doc) }),
+  removeDocument: (id: string, docId: string) => request<void>(`/purchase-requests/${id}/documents/${docId}`, { method: 'DELETE' }),
 }

@@ -1,11 +1,8 @@
 # Local environment. Services are added as they are built.
 # Database settings are passed as separate variables so a password may contain any character.
-x-auth-env: &auth-env
+x-db-env: &db-env
   DB_HOST: mysql
   DB_PORT: "3306"
-  DB_NAME: auth_db
-  DB_USER: auth_svc
-  DB_PASSWORD: ${AUTH_DB_PASSWORD}
   JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env}
 
 services:
@@ -15,12 +12,10 @@ services:
     restart: unless-stopped
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD in .env}
-      AUTH_DB_PASSWORD: ${AUTH_DB_PASSWORD:?Set AUTH_DB_PASSWORD in .env}
     ports:
       - "127.0.0.1:${MYSQL_PORT:-3306}:3306"
     volumes:
       - mysql-data:/var/lib/mysql
-      - ./infrastructure/docker/mysql-init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p\"$$MYSQL_ROOT_PASSWORD\" --silent"]
       interval: 10s
@@ -28,25 +23,75 @@ services:
       retries: 10
       start_period: 30s
 
-  auth-migrate:
-    build: ./backend/services/auth-service
-    command: ["alembic", "upgrade", "head"]
-    environment: *auth-env
+  # One-shot and idempotent: creates databases and per-service users, also on an existing data volume.
+  db-init:
+    image: mysql:8.4
+    command: ["bash", "/bootstrap/bootstrap.sh"]
+    environment:
+      MYSQL_HOST: mysql
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD in .env}
+      AUTH_DB_PASSWORD: ${AUTH_DB_PASSWORD:?Set AUTH_DB_PASSWORD in .env}
+      PURCHASE_REQUEST_DB_PASSWORD: ${PURCHASE_REQUEST_DB_PASSWORD:?Set PURCHASE_REQUEST_DB_PASSWORD in .env}
+    volumes:
+      - ./infrastructure/docker/db-bootstrap:/bootstrap:ro
     depends_on:
       mysql:
         condition: service_healthy
     restart: "no"
 
+  auth-migrate:
+    build: { context: ./backend, dockerfile: services/auth-service/Dockerfile }
+    command: ["alembic", "upgrade", "head"]
+    environment:
+      <<: *db-env
+      DB_NAME: auth_db
+      DB_USER: auth_svc
+      DB_PASSWORD: ${AUTH_DB_PASSWORD}
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
+    restart: "no"
+
   auth-service:
-    build: ./backend/services/auth-service
+    build: { context: ./backend, dockerfile: services/auth-service/Dockerfile }
     restart: unless-stopped
     environment:
-      <<: *auth-env
+      <<: *db-env
+      DB_NAME: auth_db
+      DB_USER: auth_svc
+      DB_PASSWORD: ${AUTH_DB_PASSWORD}
       COOKIE_SECURE: "false"   # local http only
     ports:
       - "127.0.0.1:8001:8001"
     depends_on:
       auth-migrate:
+        condition: service_completed_successfully
+
+  purchase-request-migrate:
+    build: { context: ./backend, dockerfile: services/purchase-request-service/Dockerfile }
+    command: ["alembic", "upgrade", "head"]
+    environment:
+      <<: *db-env
+      DB_NAME: purchase_request_db
+      DB_USER: purchase_request_svc
+      DB_PASSWORD: ${PURCHASE_REQUEST_DB_PASSWORD}
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
+    restart: "no"
+
+  purchase-request-service:
+    build: { context: ./backend, dockerfile: services/purchase-request-service/Dockerfile }
+    restart: unless-stopped
+    environment:
+      <<: *db-env
+      DB_NAME: purchase_request_db
+      DB_USER: purchase_request_svc
+      DB_PASSWORD: ${PURCHASE_REQUEST_DB_PASSWORD}
+    ports:
+      - "127.0.0.1:8002:8002"
+    depends_on:
+      purchase-request-migrate:
         condition: service_completed_successfully
 
 volumes:

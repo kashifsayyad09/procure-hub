@@ -7,6 +7,7 @@ from datetime import UTC, datetime, timedelta
 import jwt
 from argon2 import PasswordHasher
 from argon2.exceptions import InvalidHashError, VerificationError
+from procurehub_common.tokens import decode_access_token_claims
 
 from .config import Settings
 from .models import User
@@ -54,6 +55,8 @@ def create_access_token(settings: Settings, user: User) -> tuple[str, int]:
         "aud": settings.jwt_audience,
         "sub": user.id,
         "role": user.role,
+        "name": user.full_name,
+        "email": user.email,
         "typ": "access",
         "jti": str(uuid.uuid4()),
         "iat": now,
@@ -65,17 +68,7 @@ def create_access_token(settings: Settings, user: User) -> tuple[str, int]:
 
 def decode_access_token(settings: Settings, token: str) -> dict:
     """Raises jwt.PyJWTError for any invalid, expired or wrongly-scoped token. Only HS256 is accepted."""
-    claims = jwt.decode(
-        token,
-        settings.jwt_secret.get_secret_value(),
-        algorithms=["HS256"],
-        audience=settings.jwt_audience,
-        issuer=settings.jwt_issuer,
-        options={"require": ["exp", "iat", "sub", "iss", "aud"]},
-    )
-    if claims.get("typ") != "access":
-        raise jwt.InvalidTokenError("not an access token")
-    return claims
+    return decode_access_token_claims(token, secret=settings.jwt_secret.get_secret_value(), issuer=settings.jwt_issuer, audience=settings.jwt_audience)
 
 
 # ---- refresh tokens (opaque, random, stored hashed) ---------------------------------------------

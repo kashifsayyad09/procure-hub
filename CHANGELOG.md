@@ -1,5 +1,23 @@
 # Changelog
 
+## Phase 3 (0.3.0): Purchase Request Service
+### Added
+- Purchase Request microservice (FastAPI, `purchase_request_db`, Alembic): create, edit, save as draft, submit, cancel and delete drafts; line items with exact decimal totals; request numbers `PR-<year>-<6 digits>`; list with filters, search, sorting and paging; summary for dashboards; document metadata; status history; optimistic locking.
+- Shared package `backend/shared/procurehub_common`: roles, permission matrix, token verification, JSON logging, request-ID middleware, health routes, database URL builder.
+- Employee screens: real dashboard, request list, three-step create/edit form, request detail with documents and history.
+- `db-init` Compose service and `db-bootstrap/bootstrap.sh`: idempotent database and per-service user setup that also works on an existing data volume.
+- Compose services `purchase-request-migrate` and `purchase-request-service`; Vite proxy rule for `/api/v1/purchase-requests`.
+- 79 backend tests (81 on MySQL) and 31 new frontend tests.
+### Changed
+- Auth service now uses the shared package; access tokens also carry the user's name and email.
+- Docker builds for services use `backend/` as the build context.
+- `.env` needs a new variable, `PURCHASE_REQUEST_DB_PASSWORD`.
+- Employee dashboard no longer uses sample data; the sidebar links to My requests.
+- zod 3 to 4 and `@hookform/resolvers` 3 to 5 (security advisory).
+### Removed
+- `infrastructure/docker/mysql-init` (replaced by `db-bootstrap`).
+
+## Phase 2 revision: Docker configuration testing
 ## Phase 2 revision: Docker configuration testing
 ### Fixed
 - A database password containing `@` or `%` corrupted `DATABASE_URL` and the service could not connect. Compose and the service now use separate `DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` variables (`DATABASE_URL` still works).

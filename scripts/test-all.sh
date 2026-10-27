@@ -5,7 +5,9 @@ echo "== frontend: typecheck";  (cd "$ROOT/frontend" && npm run typecheck)
 echo "== frontend: lint";       (cd "$ROOT/frontend" && npm run lint)
 echo "== frontend: tests";      (cd "$ROOT/frontend" && npm test)
 echo "== frontend: build";      (cd "$ROOT/frontend" && npm run build)
-AUTH="$ROOT/backend/services/auth-service"
-PY="$AUTH/.venv/bin/python"; [ -x "$PY" ] || PY="${PYTHON:-python3}"
-echo "== auth-service: lint";   (cd "$AUTH" && "$PY" -m ruff check .)
-echo "== auth-service: tests";  (cd "$AUTH" && "$PY" -m pytest -q)
+for svc in auth-service purchase-request-service; do
+  DIR="$ROOT/backend/services/$svc"
+  PY="$DIR/.venv/bin/python"; [ -x "$PY" ] || PY="${PYTHON:-python3}"
+  echo "== $svc: lint";   (cd "$DIR" && "$PY" -m ruff check .)
+  echo "== $svc: tests";  (cd "$DIR" && "$PY" -m pytest -q)
+done

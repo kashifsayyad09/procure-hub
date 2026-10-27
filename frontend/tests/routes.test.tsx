@@ -9,6 +9,8 @@ import { mockMatchMedia } from './setup'
 import { mockApi, signIn } from './helpers'
 import { useAuthStore } from '@/stores/authStore'
 
+const EMPTY_SUMMARY = { counts: { draft: 0, submitted: 0, approved: 0, rejected: 0, cancelled: 0 }, open_value: {}, monthly: [] }
+
 const renderAt = (path: string) =>
   render(
     <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
@@ -40,6 +42,7 @@ describe('routing', () => {
 
   it('does not show another role\'s workspace', async () => {
     signIn('employee')
+    mockApi((r) => (r.path === '/purchase-requests/summary' ? { body: EMPTY_SUMMARY } : { body: { items: [], total: 0, page: 1, page_size: 5 } }))
     renderAt('/app/admin')
     expect(await screen.findByRole('heading', { level: 1, name: 'Your requests' })).toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'Users and roles' })).not.toBeInTheDocument()
@@ -64,7 +67,7 @@ describe('routing', () => {
     expect(await screen.findByText('Page not found')).toBeInTheDocument()
   })
 
-  it.each(ROLES)('renders the $label dashboard', async (role) => {
+  it.each(ROLES.filter((r) => r.id !== 'employee'))('renders the $label dashboard from sample data', async (role) => {
     mockMatchMedia(true)
     signIn(role.id)
     renderAt(role.path)
@@ -75,9 +78,9 @@ describe('routing', () => {
   })
 
   it('shows an error state with retry when data fails to load', async () => {
-    signIn('employee')
+    signIn('manager')
     dashboardRequest.failNext = true
-    renderAt('/app/employee')
+    renderAt('/app/manager')
     expect(await screen.findByRole('alert')).toHaveTextContent('Could not load this data')
     await userEvent.click(screen.getByRole('button', { name: 'Try again' }))
     expect(await screen.findByRole('region', { name: 'Key figures' })).toBeInTheDocument()

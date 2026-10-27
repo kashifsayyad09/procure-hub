@@ -2,7 +2,7 @@ import contextvars
 import json
 import logging
 import sys
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 
 request_id_var: contextvars.ContextVar[str] = contextvars.ContextVar("request_id", default="-")
 
@@ -12,11 +12,15 @@ _RESERVED = set(logging.LogRecord("", 0, "", 0, "", (), None).__dict__) | {"mess
 class JsonFormatter(logging.Formatter):
     """One JSON object per line. Never pass passwords or tokens to the logger."""
 
+    def __init__(self, service: str):
+        super().__init__()
+        self.service = service
+
     def format(self, record: logging.LogRecord) -> str:
         payload = {
-            "ts": datetime.fromtimestamp(record.created, UTC).isoformat(),
+            "ts": datetime.fromtimestamp(record.created, timezone.utc).isoformat(),
             "level": record.levelname,
-            "service": "auth-service",
+            "service": self.service,
             "logger": record.name,
             "message": record.getMessage(),
             "request_id": request_id_var.get(),
@@ -27,9 +31,9 @@ class JsonFormatter(logging.Formatter):
         return json.dumps(payload, default=str)
 
 
-def configure_logging(level: str) -> None:
+def configure_logging(level: str, service: str) -> None:
     handler = logging.StreamHandler(sys.stdout)
-    handler.setFormatter(JsonFormatter())
+    handler.setFormatter(JsonFormatter(service))
     root = logging.getLogger()
     root.handlers = [handler]
     root.setLevel(level.upper())

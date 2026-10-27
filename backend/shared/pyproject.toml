@@ -1,0 +1,13 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "procurehub-common"
+version = "0.1.0"
+description = "Code every ProcureHub service needs: roles, permissions, token verification, logging, DB URL. No database models."
+requires-python = ">=3.12"
+dependencies = ["PyJWT>=2.8", "SQLAlchemy>=2.0", "fastapi>=0.110"]
+
+[tool.setuptools]
+packages = ["procurehub_common"]

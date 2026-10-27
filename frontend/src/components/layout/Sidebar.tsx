@@ -33,7 +33,7 @@ function NavList({ role, collapsed }: { role: RoleInfo; collapsed: boolean }) {
           return (
             <li key={item.label}>
               {i === 0 || item.to ? (
-                <NavLink to={i === 0 ? role.path : item.to!} end title={collapsed ? item.label : undefined} className={({ isActive }) => clsx(base, isActive ? 'bg-accent text-on-accent' : 'hover:bg-pill')}>{body}</NavLink>
+                <NavLink to={i === 0 ? role.path : item.to!} end={i === 0} title={collapsed ? item.label : undefined} className={({ isActive }) => clsx(base, isActive ? 'bg-accent text-on-accent' : 'hover:bg-pill')}>{body}</NavLink>
               ) : (
                 <span aria-disabled="true" title={`${item.label} arrives in Phase ${item.phase}`} className={clsx(base, 'cursor-not-allowed text-muted')}>{body}</span>
               )}

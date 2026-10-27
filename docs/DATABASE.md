@@ -1,6 +1,6 @@
 # Database (Phase 1 foundation)
 
-MySQL 8.4 runs locally via `docker-compose.yml`. `infrastructure/docker/mysql-init/01-create-databases.sql` creates one logical database per persistent service:
+MySQL 8.4 runs locally via `docker-compose.yml`. The bootstrap script creates one logical database per persistent service:
 auth_db, purchase_request_db, approval_db, vendor_db, quotation_db, purchase_order_db, receiving_db, invoice_db, notification_db, audit_db, si_talker_db.
 
 Rules for later phases: one dedicated MySQL user per service with grants only on its own database; Alembic migrations per service; no cross-database joins. The root password comes from `.env` (not committed). This setup has not been started in the build environment because Docker was unavailable.
@@ -12,4 +12,14 @@ Migration `0001` (Alembic, `backend/services/auth-service/migrations`):
 - Timestamps are naive UTC. Expired and revoked tokens are not purged yet; a cleanup job is a later task.
 
 Verified on SQLite and on a real MySQL 8.0.46 server: the migration upgrades, matches the SQLAlchemy models (autogenerate diff is empty), downgrades and upgrades again. MySQL 8.4 itself (the image Compose uses) was not available to test.
-`02-create-service-users.sh` creates `auth_svc` with rights on `auth_db` only; each new service adds its own user.
+`infrastructure/docker/db-bootstrap/bootstrap.sh` creates the 11 databases and one user per service with rights on that service's database only. It is idempotent and runs on every `docker compose up` (the `db-init` service), so it also applies to an existing data volume and applies password changes. Each new service adds one `ensure_user` line. Passwords must not contain quotes or backslashes.
+
+## purchase_request_db (Phase 3)
+Migration `0001`:
+- `purchase_requests`: id, `number` (unique), requester_id / name / email (copied from the token; not a foreign key to another service's table), department, title, justification, priority, needed_by, currency, status, `total_amount` NUMERIC(14,2), cancel_reason, `version` (optimistic lock), submitted_at, created_at, updated_at. Indexes on requester_id, created_at, (requester_id, status), (status, created_at).
+- `purchase_request_items`: request_id (FK, cascade), line_no, description, quantity NUMERIC(12,3), unit, unit_price NUMERIC(14,2), notes.
+- `purchase_request_documents`: request_id (FK, cascade), position, file_name, content_type, size_bytes, storage_key, `content_stored`. Details only; no file content is stored yet.
+- `purchase_request_history`: request_id (FK, cascade), `seq`, from_status, to_status, actor, note.
+- `number_sequences`: one counter row per year, locked while a number is allocated.
+
+Verified on SQLite and on a real MySQL 8.0.46 server (upgrade, no drift from the models, downgrade, and 36 concurrent creates producing 36 unique, gap-free numbers). MySQL 8.4 itself was not available.

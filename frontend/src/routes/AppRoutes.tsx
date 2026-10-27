@@ -15,6 +15,9 @@ const Vendor = lazy(() => import('@/pages/vendor/VendorDashboard'))
 const Finance = lazy(() => import('@/pages/finance/FinanceDashboard'))
 const Admin = lazy(() => import('@/pages/admin/AdminDashboard'))
 const Users = lazy(() => import('@/pages/admin/UsersPage'))
+const Requests = lazy(() => import('@/pages/employee/RequestsPage'))
+const RequestForm = lazy(() => import('@/pages/employee/RequestFormPage'))
+const RequestDetail = lazy(() => import('@/pages/employee/RequestDetailPage'))
 
 const only = (role: Role, el: JSX.Element) => <RequireAuth roles={[role]}>{el}</RequireAuth>
 
@@ -40,6 +43,10 @@ export function AppRoutes() {
         <Route path="/login" element={<Login />} />
         <Route path="/app" element={<RequireAuth><AppShell /></RequireAuth>}>
           <Route path="employee" element={only('employee', <Employee />)} />
+          <Route path="employee/requests" element={only('employee', <Requests />)} />
+          <Route path="employee/requests/new" element={only('employee', <RequestForm />)} />
+          <Route path="employee/requests/:id" element={only('employee', <RequestDetail />)} />
+          <Route path="employee/requests/:id/edit" element={only('employee', <RequestForm />)} />
           <Route path="manager" element={only('manager', <Manager />)} />
           <Route path="procurement" element={only('procurement', <Procurement />)} />
           <Route path="vendor" element={only('vendor', <Vendor />)} />
