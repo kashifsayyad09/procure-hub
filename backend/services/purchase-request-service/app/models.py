@@ -3,7 +3,7 @@ from datetime import UTC, date, datetime
 from decimal import Decimal
 from enum import StrEnum
 
-from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Index, Integer, Numeric, String, Text
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Index, Integer, Numeric, String, Text, false
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
@@ -61,6 +61,10 @@ class PurchaseRequest(Base):
     status: Mapped[str] = mapped_column(String(20), default=Status.DRAFT.value)
     total_amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), default=Decimal("0.00"))
     cancel_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    approval_registered: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())  # has the Approval service accepted it?
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    decided_by_name: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    decision_note: Mapped[str | None] = mapped_column(String(500), nullable=True)
     version: Mapped[int] = mapped_column(Integer, default=1)
     submitted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, index=True)

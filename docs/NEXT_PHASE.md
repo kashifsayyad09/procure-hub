@@ -1,14 +1,16 @@
-# Next phase: Phase 4, Approval Service
+# Next phase: Phase 5, Vendor Service
 
-Objective: Approval microservice (FastAPI, `approval_db`, Alembic): multi-step approval workflow, approve and reject with reasons, approval history, delegation hooks, manager approval dashboard, notification integration points, end-to-end approval tests.
+Objective: Vendor microservice (FastAPI, `vendor_db`, Alembic): vendor onboarding and registration, vendor profiles and contacts, categories, a vendor directory, verification status, the vendor portal screens, authorization tests.
 
-Open design question to settle first: how the Approval service learns about submitted requests and moves them to `approved` or `rejected`. Phase 3 keeps the Purchase Request service as the only writer of `purchase_request_db`. Recommended: the Purchase Request service exposes a small internal endpoint for status decisions that accepts only a service credential (not a user token), and the Approval service calls it after recording the decision. Phase 11 (SQS) later turns this into events with retries. Managers also need read access to the requests they must decide on; the Approval service should hold the approval records and a snapshot of what the manager needs, rather than reading another service's database.
+Decisions to settle first:
+- How a vendor user relates to a vendor record. Vendor users already exist in the auth service (role `vendor`). Recommended: the vendor record stores the auth user id of its owner (no foreign key), and a vendor can manage only the record whose owner id equals their token subject, the same ownership pattern as purchase requests. Administrators or procurement create or verify vendors (`vendor:read` exists for procurement; add a `vendor:verify` permission).
+- Who can verify a vendor, and what verification means for Phase 6 (only verified vendors can be invited to an RFQ).
 
-Reuse from Phase 3:
-- Service layout and test patterns in `backend/services/purchase-request-service` (app factory, `service.py` business layer, ownership checks, version locking, MySQL test option, migration tests).
-- `backend/shared/procurehub_common` for roles, permissions (`approval:read`, `approval:decide`, `approval:delegate` already exist), token verification, logging and health routes.
-- `infrastructure/docker/db-bootstrap/bootstrap.sh`: add one `ensure_user approval_svc approval_db APPROVAL_DB_PASSWORD` line, the variable to `.env.example` and to the `db-init` service.
-- Compose pattern: `*-migrate` one-shot plus the service; Vite proxy rule for `/api/v1/approvals`.
-- Frontend: `RequireAuth`, `DataTable`, `Modal`, `Drawer`, `ApprovalTimeline`, `features/purchase-requests/timeline.ts`; replace the manager sample dashboard.
+Reuse from Phase 4:
+- Service layout and test patterns in `backend/services/approval-service` and `purchase-request-service` (app factory, `service.py` business layer, ownership checks, MySQL test option, migration tests, mutation-style rule tests).
+- `backend/shared/procurehub_common`: roles and permissions, `make_user_auth`, logging, health, service tokens and contracts for any call to another service (an RFQ invitation will need the vendor list from this service).
+- `infrastructure/docker/db-bootstrap/bootstrap.sh`: add `ensure_user vendor_svc vendor_db VENDOR_DB_PASSWORD`, the variable to `.env.example` and the `db-init` service; compose migrate and service pair; Vite proxy rule for `/api/v1/vendors`.
+- `backend/tests`: add vendor scenarios to the cross-service end-to-end test.
+- Frontend: `RequireAuth`, `DataTable`, `Modal`, `Drawer`, the multi-step form pattern from `RequestFormPage`, status badges, `ApprovalTimeline`; replace the vendor sample dashboard.
 
-Constraints: no shared models or cross-database joins; role and ownership rules enforced in the service; a manager must not approve their own request; keep one cumulative ZIP.
+Constraints: no shared models or cross-database joins; ownership enforced in the service; vendors see only their own record; no hardcoded secrets; keep one cumulative ZIP.

@@ -7,7 +7,7 @@ name = "procurehub-common"
 version = "0.1.0"
 description = "Code every ProcureHub service needs: roles, permissions, token verification, logging, DB URL. No database models."
 requires-python = ">=3.12"
-dependencies = ["PyJWT>=2.8", "SQLAlchemy>=2.0", "fastapi>=0.110"]
+dependencies = ["PyJWT>=2.8", "SQLAlchemy>=2.0", "fastapi>=0.110", "httpx>=0.27", "pydantic>=2.5"]
 
 [tool.setuptools]
-packages = ["procurehub_common"]
+packages = ["procurehub_common", "procurehub_common.contracts"]

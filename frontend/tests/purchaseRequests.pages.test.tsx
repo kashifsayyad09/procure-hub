@@ -11,7 +11,7 @@ const summary = (over: Partial<RequestSummary> = {}): RequestSummary => ({
   needed_by: null, requester_name: 'Test employee', item_count: 1, created_at: '2026-03-01T10:00:00', submitted_at: null, updated_at: '2026-03-01T10:00:00', ...over,
 })
 const detail = (over: Partial<RequestDetail> = {}): RequestDetail => ({
-  ...summary(), justification: 'Back pain', requester_id: 'id-employee', requester_email: 'employee@example.com', cancel_reason: null, version: 1,
+  ...summary(), justification: 'Back pain', requester_id: 'id-employee', requester_email: 'employee@example.com', cancel_reason: null, decided_at: null, decided_by_name: null, decision_note: null, version: 1,
   items: [{ id: 'i1', line_no: 1, description: 'Desk', quantity: '2', unit: 'each', unit_price: '21000.00', notes: 'Oak', line_total: '42000.00' }],
   documents: [], history: [{ id: 'h1', from_status: null, to_status: 'draft', actor_name: 'Test employee', note: 'Draft created', created_at: '2026-03-01T10:00:00' }], ...over,
 })
@@ -258,6 +258,15 @@ describe('request detail', () => {
     expect(calls.some((c) => c.path.endsWith('/documents'))).toBe(false)
     await userEvent.upload(input, new File(['%PDF-1.4 hello'], 'quote.pdf', { type: 'application/pdf' }))
     await waitFor(() => expect(calls.find((c) => c.path.endsWith('/documents'))?.body).toEqual({ file_name: 'quote.pdf', content_type: 'application/pdf', size_bytes: 14 }))
+  })
+
+  it('shows who decided and why, once a manager has decided', async () => {
+    signIn('employee')
+    mockApi(() => ({ body: detail({ status: 'rejected', decided_at: '2026-03-05T09:30:00', decided_by_name: 'Mia Manager', decision_note: 'Over budget this quarter' }) }))
+    renderAt('/app/employee/requests/r1')
+    const dec = (await screen.findByText('Decision')).closest('div')!
+    expect(dec).toHaveTextContent('Rejected by Mia Manager')
+    expect(dec).toHaveTextContent('Over budget this quarter')
   })
 
   it('hides draft-only controls once a request is approved', async () => {

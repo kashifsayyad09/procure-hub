@@ -52,3 +52,35 @@ Base path `/api/v1/purchase-requests`. Same bearer token as the auth service. Mo
 **Numbers:** `PR-<year>-<6 digits>`, allocated under a database lock so concurrent requests never share one. Deleting a draft leaves a gap.
 **Limits:** 100 items per request, 10 documents, documents up to 10 MB of type PDF, PNG, JPEG, TXT, CSV, DOCX or XLSX. Currencies INR, USD, EUR, GBP.
 **Errors:** `{"detail": "message"}`, or a list of messages for validation and submit problems.
+
+---
+
+# API (Phase 4: approval service)
+
+Base path `/api/v1/approvals`. Managers only (`approval:read`, `approval:decide`, `approval:delegate`). Same bearer token as the other services.
+
+| Method and path | Result |
+|---|---|
+| `GET /summary` | `waiting_for_me`, `overdue_for_me`, `delegated_to_me`, `decided_by_me_30d`, `approved_30d`, `rejected_30d`, `approved_value_30d` (per currency), `avg_decision_hours_30d`, `monthly` decisions (6 months) |
+| `GET /` | paged list. `view`: `queue` (what I can decide now, longest waiting first by default), `mine` (I decided or was given), `all`. Also `status`, `priority`, `q`, `sort`, `order`, `page`, `page_size` (max 100) |
+| `GET /{id}` | snapshot of the request, items, steps, history, and for the caller `can_decide` with a plain-language `blocked_reason` |
+| `POST /{id}/approve` `{comment?}` | approves the current level. After the last level the request is approved |
+| `POST /{id}/reject` `{reason}` | reason of at least 3 characters. Ends the workflow immediately |
+| `POST /{id}/delegate` `{user_id, note?}` | hands the current level to another active manager. Only that manager can then decide |
+| `GET /delegates` | managers a decision can be delegated to (never yourself) |
+
+**Rules:** nobody decides their own request; one person cannot approve two levels of the same request; a delegated step can be decided only by the delegate; a decided or cancelled approval answers 409 to any further action (so two managers acting at once produce exactly one decision).
+**Levels** depend on the total, per currency, from configuration (defaults: INR 1 level below 1,00,000, 2 levels from 1,00,000, 3 from 10,00,000; USD 1,500 and 15,000; EUR 1,400 and 14,000; GBP 1,200 and 12,000). A currency with no thresholds gets the strictest route. Amounts are never converted.
+**Overdue:** a step waiting more than `ESCALATION_HOURS` (48) is flagged once and recorded in the history. Any eligible manager can still decide.
+
+## Internal APIs (service to service, never through the ingress)
+Called with a service token (`Authorization: Bearer ...`, separate secret `INTERNAL_JWT_SECRET`, audience `procurehub-internal`, type `service`, issuer equal to subject). User tokens are refused, even an administrator's.
+
+| Call | Caller | Purpose |
+|---|---|---|
+| `POST /internal/v1/approvals` (approval service) | purchase-request-service | register a submitted request. Idempotent on `request_id` |
+| `POST /internal/v1/approvals/{request_id}/cancel` (approval service) | purchase-request-service | the requester cancelled. Idempotent |
+| `POST /internal/v1/purchase-requests/{id}/decision` (purchase request service) | approval-service | final approved or rejected. Idempotent; 409 if the request is no longer submitted |
+| `GET /internal/v1/users?role=manager` (auth service) | approval-service | active managers, for delegation |
+
+Message shapes live in `backend/shared/procurehub_common/contracts/approval.py` (versioned, validated on both sides).

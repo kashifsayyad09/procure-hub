@@ -166,6 +166,9 @@ class RequestOut(RequestSummaryOut):
     requester_id: str
     requester_email: str
     cancel_reason: str | None
+    decided_at: datetime | None
+    decided_by_name: str | None
+    decision_note: str | None
     version: int
     items: list[ItemOut]
     documents: list[DocumentOut]

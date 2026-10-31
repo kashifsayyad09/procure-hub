@@ -8,7 +8,7 @@ from sqlalchemy.engine import Engine
 from .config import Settings, get_settings
 from .database import make_engine, make_session_factory
 from .dburl import resolve_database_url
-from .routers import auth, users
+from .routers import auth, internal, users
 
 log = logging.getLogger("http")
 
@@ -33,4 +33,5 @@ def create_app(settings: Settings | None = None, engine: Engine | None = None) -
     install_health_routes(app, engine)
     app.include_router(auth.router)
     app.include_router(users.router)
+    app.include_router(internal.router)
     return app

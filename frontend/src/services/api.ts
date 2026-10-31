@@ -1,5 +1,6 @@
 import type { SessionUser, TokenResponse, UserPage, UserRecord } from '@/types/auth'
 import type { Role } from '@/types/roles'
+import type { ApprovalDetail, ApprovalPage, ApprovalQuery, ApprovalsSummary, Delegate } from '@/features/approvals/types'
 import type { RequestDetail, RequestInput, RequestPage, RequestQuery, RequestsSummary, RequestDocument } from '@/features/purchase-requests/types'
 
 const BASE = '/api/v1'
@@ -129,4 +130,22 @@ export const purchaseRequestsApi = {
   addDocument: (id: string, doc: { file_name: string; content_type: string; size_bytes: number }) =>
     request<RequestDocument>(`/purchase-requests/${id}/documents`, { method: 'POST', body: JSON.stringify(doc) }),
   removeDocument: (id: string, docId: string) => request<void>(`/purchase-requests/${id}/documents/${docId}`, { method: 'DELETE' }),
+}
+
+export const approvalsApi = {
+  list(query: ApprovalQuery) {
+    const p = new URLSearchParams({ view: query.view, page: String(query.page), page_size: String(query.page_size) })
+    if (query.q) p.set('q', query.q)
+    if (query.status) p.set('status', query.status)
+    if (query.priority) p.set('priority', query.priority)
+    if (query.sort) p.set('sort', query.sort)
+    if (query.order) p.set('order', query.order)
+    return request<ApprovalPage>(`/approvals?${p}`)
+  },
+  summary: () => request<ApprovalsSummary>('/approvals/summary'),
+  get: (id: string) => request<ApprovalDetail>(`/approvals/${id}`),
+  approve: (id: string, comment?: string) => request<ApprovalDetail>(`/approvals/${id}/approve`, { method: 'POST', body: JSON.stringify({ comment: comment || null }) }),
+  reject: (id: string, reason: string) => request<ApprovalDetail>(`/approvals/${id}/reject`, { method: 'POST', body: JSON.stringify({ reason }) }),
+  delegate: (id: string, userId: string, note?: string) => request<ApprovalDetail>(`/approvals/${id}/delegate`, { method: 'POST', body: JSON.stringify({ user_id: userId, note: note || null }) }),
+  delegates: () => request<Delegate[]>('/approvals/delegates'),
 }

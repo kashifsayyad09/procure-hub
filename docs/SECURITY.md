@@ -1,4 +1,4 @@
-# Security notes (Phases 2 and 3)
+# Security notes (Phases 2 to 4)
 
 ## What is enforced
 - **Authorization is server-side.** Every protected route checks the token, then loads the user so a role change or suspension takes effect immediately. Route guards in React only improve navigation.
@@ -22,7 +22,24 @@
 - **Token staleness, observed:** after an administrator changed a user's role, that user's existing access token was still accepted by the Purchase Request service (HTTP 200) until it expired, at most 15 minutes. A new sign-in carried the new role and was refused (403). The auth service itself applies role changes immediately. Options for later: shorter tokens, or a revocation check.
 - Frontend dependency upgrade: zod 3 to 4 to clear a new advisory (client-side validation only).
 
+## Added in Phase 4
+- **Separation of duties, enforced by the server:** nobody decides their own request; one person cannot approve two levels; a delegated approval can only be decided by the delegate; decided or cancelled approvals refuse further action. Each rule has a test that fails if the rule is removed (checked by deliberately breaking it).
+- **Concurrency:** decisions lock the approval row, so two managers acting at once give one decision and one 409 (tested on real MySQL).
+- **Service-to-service authentication:** separate secret (`INTERNAL_JWT_SECRET`), audience, token type and a named caller list. A user token cannot call an internal endpoint (even an administrator's) and a service token cannot be used on a public endpoint. Tested for wrong secret, wrong audience, wrong type, wrong caller, expired, unsigned and other algorithms.
+- **Internal APIs are not exposed:** hidden from OpenAPI, not proxied (checked through the dev proxy: 404; direct without a token: 401).
+- **Contracts are validated on both sides**, with non-empty identifiers, length limits and allowed values.
+- **Least privilege:** `approval_svc` can reach only `approval_db` (verified: reading another service's table is denied).
+- **Logs:** a bug where an extra log field called `level` replaced the severity was found and fixed; the shared formatter now prevents any extra field from overwriting a core field. Logs contain no tokens or passwords (checked in the live run).
+
 ## Known limitations (later phases)
+- **Any manager can decide any request.** There is no department or reporting-line routing yet because there is no department directory. The history records who decided.
+- Approval levels and the overdue time come from configuration, not an admin screen.
+- A manager whose role is removed can still decide until their access token expires (up to 15 minutes), because services trust the signed role. Same window as the Purchase Request service.
+- Overdue only flags and records; it does not notify or reassign (notifications arrive in Phase 10).
+- Each service runs its own retry loop. With several replicas the loops overlap; this is safe because the calls are idempotent, only wasteful. Phase 11 replaces them with queues.
+- Employees see only the final outcome, not which level their request is at.
+- The outbox events are written but not yet published.
+- Service tokens use a shared secret; per-service keys or mutual TLS would be stronger.
 - No per-IP rate limiting yet (ingress, Phase 14). The 429 lockout response confirms an email exists, but only after repeated failures against it.
 - No password reset by email (Phase 10), no forced change of an admin-set initial password, no MFA.
 - Security events go to structured logs; they reach the Audit service in Phase 10.

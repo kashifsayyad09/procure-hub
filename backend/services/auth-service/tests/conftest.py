@@ -15,7 +15,7 @@ PASSWORD = "Correct-horse-42"
 
 @pytest.fixture
 def settings():
-    return Settings(database_url="sqlite://", jwt_secret="x" * 40, cookie_secure=False, max_failed_logins=3, log_level="CRITICAL")
+    return Settings(database_url="sqlite://", jwt_secret="x" * 40, internal_jwt_secret="i" * 40, cookie_secure=False, max_failed_logins=3, log_level="CRITICAL")
 
 
 @pytest.fixture

@@ -28,32 +28,9 @@ const done = (label: string, detail: string): TimelineStep => ({ label, detail, 
 const now = (label: string, detail: string): TimelineStep => ({ label, detail, state: 'current' })
 const next = (label: string, detail: string): TimelineStep => ({ label, detail, state: 'pending' })
 
-export type SampleRole = Exclude<Role, 'employee'> // the employee dashboard uses the real Purchase Request service
+export type SampleRole = Exclude<Role, 'employee' | 'manager'> // employee and manager dashboards use the real services
 
 export const DASHBOARDS: Record<SampleRole, DashboardData> = {
-  manager: {
-    headline: 'Approvals',
-    intro: 'Decide what is waiting and keep an eye on department spend.',
-    stats: [
-      { id: 'pending', label: 'Waiting for you', value: 5, note: '1 is overdue' },
-      { id: 'approved', label: 'Approved this month', value: 18, note: 'Average decision: 6 hours' },
-      { id: 'spend', label: 'Department spend', value: 612000, prefix: '₹', note: '74% of quarterly budget' },
-      { id: 'delegated', label: 'Delegated', value: 2, note: 'To Arjun Mehta' },
-    ],
-    trend: { title: 'Department spend (₹ thousand)', kind: 'area', unit: 'k', label: 'Spend', points: series([84, 102, 95, 118, 110, 103]) },
-    table: {
-      title: 'Approval queue', filterKey: 'status',
-      columns: [{ key: 'id', header: 'Request' }, { key: 'requester', header: 'Requester' }, { key: 'amount', header: 'Amount (₹)', right: true }, { key: 'status', header: 'Status', status: true }],
-      rows: [
-        { id: 'PR-2041', requester: 'Asha Rao', amount: 96000, status: 'Pending' },
-        { id: 'PR-2040', requester: 'Dev Patel', amount: 12400, status: 'Pending' },
-        { id: 'PR-2036', requester: 'Meera Joshi', amount: 58000, status: 'Approved' },
-        { id: 'PR-2029', requester: 'Sam Iyer', amount: 220000, status: 'Rejected' },
-      ],
-    },
-    timeline: { title: 'Approval chain for PR-2041', steps: [done('Line manager', 'Approved on 13 Oct'), now('Department head', 'Waiting on you'), next('Finance check', 'Required above ₹1,00,000')] },
-    actions: [{ label: 'Review next request', phase: 4 }, { label: 'Delegate approvals', phase: 4 }],
-  },
   procurement: {
     headline: 'Sourcing',
     intro: 'Turn approved requests into RFQs, compare quotations and place orders.',

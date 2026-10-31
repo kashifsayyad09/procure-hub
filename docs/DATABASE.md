@@ -23,3 +23,15 @@ Migration `0001`:
 - `number_sequences`: one counter row per year, locked while a number is allocated.
 
 Verified on SQLite and on a real MySQL 8.0.46 server (upgrade, no drift from the models, downgrade, and 36 concurrent creates producing 36 unique, gap-free numbers). MySQL 8.4 itself was not available.
+
+## purchase_request_db: migration 0002 (Phase 4)
+Adds `approval_registered` (default false), `decided_at`, `decided_by_name`, `decision_note` to `purchase_requests`. Requests submitted before this phase get `approval_registered = false`, so the retry loop registers them with the Approval service automatically (tested by upgrading a Phase 3 database).
+
+## approval_db (Phase 4)
+Migration `0001`:
+- `approvals`: one per request: `request_id` (unique, from the Purchase Request service; not a foreign key), a snapshot (number, title, justification, department, priority, currency, `total_amount` NUMERIC(14,2), needed_by, requester, items as JSON text), `status` (pending, approved, rejected, cancelled), `current_level`, `total_levels`, `decision_sync` (not_needed, pending, synced, conflict), `sync_attempts`, `last_sync_error`, timestamps.
+- `approval_steps`: one per level: status (waiting, pending, approved, rejected, skipped), `assigned_to_*` (delegation), `decided_by_*`, `comment`, `activated_at`, `escalated_at`.
+- `approval_history`: ordered by an explicit `seq` (MySQL timestamps have one-second precision).
+- `approval_events`: the outbox, with `published_at` empty until Phases 10/11.
+
+Verified on SQLite and real MySQL 8.0.46: upgrade, no drift from the models, downgrade, and two concurrent decisions on one step producing exactly one decision. The bootstrap script now also creates `approval_svc` with rights on `approval_db` only.

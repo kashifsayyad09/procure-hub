@@ -67,7 +67,7 @@ describe('routing', () => {
     expect(await screen.findByText('Page not found')).toBeInTheDocument()
   })
 
-  it.each(ROLES.filter((r) => r.id !== 'employee'))('renders the $label dashboard from sample data', async (role) => {
+  it.each(ROLES.filter((r) => r.id !== 'employee' && r.id !== 'manager'))('renders the $label dashboard from sample data', async (role) => {
     mockMatchMedia(true)
     signIn(role.id)
     renderAt(role.path)
@@ -78,9 +78,9 @@ describe('routing', () => {
   })
 
   it('shows an error state with retry when data fails to load', async () => {
-    signIn('manager')
+    signIn('finance')
     dashboardRequest.failNext = true
-    renderAt('/app/manager')
+    renderAt('/app/finance')
     expect(await screen.findByRole('alert')).toHaveTextContent('Could not load this data')
     await userEvent.click(screen.getByRole('button', { name: 'Try again' }))
     expect(await screen.findByRole('region', { name: 'Key figures' })).toBeInTheDocument()

@@ -1,5 +1,24 @@
 # Changelog
 
+## Phase 4 (0.4.0): Approval Service
+### Added
+- Approval microservice (FastAPI, `approval_db`, Alembic): multi-level approval by amount and currency, approve, reject with reason, delegation, overdue flagging, queue, my-decisions and all views, dashboard summary, full history, and an outbox of events for Phases 10 and 11.
+- Service-to-service hand-off: the Purchase Request service registers submitted requests and the Approval service delivers decisions back, both authenticated, idempotent and retried until delivered. Cancellation closes the approval.
+- Shared package: service tokens, HTTP client, message contracts, user-token dependencies.
+- Auth service internal endpoint listing active managers (for delegation).
+- Manager screens on real data: dashboard, approvals list with views and filters, approval detail with approve, reject and delegate. Employees see who decided and why.
+- Cross-service end-to-end tests that start the three services as real processes, including outage scenarios (`backend/tests`).
+- Compose services `approval-migrate` and `approval-service`; Vite proxy rule for `/api/v1/approvals`.
+- 76 approval tests on MySQL (73 on SQLite), 18 shared tests, 10 end-to-end tests, 16 new frontend tests.
+### Changed
+- Purchase Request service: migration 0002, internal decision endpoint, retry loop, decision details on requests, uses the shared auth dependencies.
+- `.env` needs two new variables: `APPROVAL_DB_PASSWORD` and `INTERNAL_JWT_SECRET`.
+- The manager dashboard no longer uses sample data; the sidebar links to Approvals.
+### Fixed
+- Contract identifiers could be empty. A log field named `level` overwrote the log severity.
+- New `npm audit` advisory (minimatch below 11.0.1, a denial of service in lint tooling): `overrides` in `frontend/package.json` pins the patched 11.x; lint, tests and build verified. (npm's own suggested fix, downgrading ESLint to version 4, was not used.)
+
+## Phase 3 (0.3.0): Purchase Request Service
 ## Phase 3 (0.3.0): Purchase Request Service
 ### Added
 - Purchase Request microservice (FastAPI, `purchase_request_db`, Alembic): create, edit, save as draft, submit, cancel and delete drafts; line items with exact decimal totals; request numbers `PR-<year>-<6 digits>`; list with filters, search, sorting and paging; summary for dashboards; document metadata; status history; optimistic locking.

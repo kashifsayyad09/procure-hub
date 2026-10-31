@@ -1,51 +1,51 @@
-# Test report: Phase 3
+# Test report: Phase 4
 
 Environment: Node 22.22, Python 3.12, MySQL 8.0.46 installed in the build sandbox. No Docker, no browser.
 
 ## Results
 | Check | Command | Result |
 |---|---|---|
-| Frontend typecheck (strict) | `cd frontend && npm run typecheck` | Pass |
-| Frontend lint, zero warnings | `npm run lint` | Pass |
-| Frontend tests | `npm test` | 83 of 83 passed (9 files) |
-| Frontend production build | `npm run build` | Pass. Entry bundle 123 kB gzipped; Three.js and charts are lazy chunks, nothing preloaded |
-| Frontend dependency audit | `npm audit` | 0 vulnerabilities (after upgrading zod 3 to 4 for a new advisory) |
-| Auth service lint | `ruff check .` | Pass |
-| Auth service tests, SQLite | `pytest -q` | 59 passed, 1 skipped (the MySQL-only migration test) |
-| Auth service tests, real MySQL | `TEST_DATABASE_URL=... pytest -q` | 60 of 60 passed |
-| Purchase request service lint | `ruff check .` | Pass |
-| Purchase request tests, SQLite | `pytest -q` | 79 passed, 2 skipped (MySQL-only), 99% line coverage |
-| Purchase request tests, real MySQL | `TEST_DATABASE_URL=... pytest -q` | 81 of 81 passed, including the migration and 36 concurrent creates |
-| Python dependency audit | `pip-audit -r requirements.txt` | No known vulnerabilities (both services) |
+| Frontend typecheck, lint | `npm run typecheck`, `npm run lint` | Pass, zero warnings |
+| Frontend tests | `npm test` | 99 of 99 passed (10 files) |
+| Frontend production build | `npm run build` | Pass; Three.js and charts remain lazy chunks |
+| Shared package | `cd backend/shared && pytest` | 18 of 18 passed |
+| Auth service, SQLite / real MySQL | `pytest` | 62 passed, 1 skipped / 63 of 63 |
+| Purchase request service, SQLite / real MySQL | `pytest` | 97 passed, 2 skipped / 99 of 99; 96% coverage |
+| Approval service, SQLite / real MySQL | `pytest` | 73 passed, 3 skipped / 76 of 76; 95% coverage |
+| Cross-service end-to-end, SQLite / real MySQL | `cd backend/tests && pytest` | 10 of 10 / 10 of 10 |
+| Lint (shared, 3 services, e2e) | `ruff check .` | Pass |
+| Dependency audits | `npm audit`, `pip-audit` (3 services) | No known vulnerabilities (a late `minimatch` advisory in lint tooling was fixed with an `overrides` pin) |
 | Layout and secret scan | `scripts/validate-project.sh` | Pass |
 
+(The skipped tests are the MySQL-only ones; they run, and pass, when `TEST_DATABASE_URL` points at MySQL.)
+
 ## What the new tests cover
-**Purchase request service (backend):** create, validation of every field and limit, text cleaning, exact decimal totals (half-up rounding, no float drift), sequential unique numbers; edit with a version lock (stale edits refused); delete drafts; submit rules (every missing item reported at once, double submit, locked after submit); cancel with a reason; approved and rejected requests locked; documents (allowlist, size, path stripping, limit of 10, draft only); list filters, search with literal wildcards, sorting limited to listed columns, paging, date range; summary counts, per-currency totals, month buckets; every endpoint rejecting anonymous callers; invalid, expired, wrongly signed, wrong audience, wrong issuer, wrong type, other-algorithm and unsigned tokens; vendor, finance, admin, manager and unknown roles refused; employees unable to see or change each other's requests; identity taken from the token, not the body; procurement limited to approved requests and read-only; SQL-injection strings; health and OpenAPI; refusal to start without a strong secret; history and documents ordering when timestamps are identical; migration up, no drift, down, valid MySQL DDL; concurrent numbering on MySQL.
-**Auth service:** the 59 existing tests still pass after moving shared code into `procurehub_common`; one new test checks the token's name and email claims.
-**Frontend:** exact money preview (matches the server's rounding, beyond Number's safe range), form rules mirroring the server, submit problems in plain language, timeline states, API query building and field-named errors, the dashboard on real data (counts, chart data, recent table, empty state, error state), request list (server-side search, filter, sort, paging, two kinds of empty state), the three-step form (valid and invalid paths, version sent on edit, server errors, submit flow), the detail page (actions per status, delete confirmation, cancel needs a reason, document checks before any server call, draft-only controls hidden), and access checks.
+**Approval rules:** approval levels at every threshold boundary and per currency; threshold and secret configuration validation; internal registration (idempotent, validated, route per amount); single, two and three level workflows; rejection with a reason ending the workflow; double decisions; nobody decides their own request; one person cannot approve two levels; every non-manager role, anonymous callers and invalid, expired, wrongly signed and service tokens refused on every endpoint; history order with identical timestamps; an outbox event for every change.
+**Delegation:** only the delegate can decide; the delegate can pass it on; invalid targets (self, requester, unknown, someone who already approved); list of delegates and failure when the auth service is down.
+**Keeping services in step:** decisions kept and delivered after an outage (down and 5xx), a refused decision recorded as a conflict and not retried, cancellation closing the workflow (idempotent, unknown request, after a decision), registration retried after an outage, failed registration never breaking submit, upgrade from a Phase 3 database.
+**Internal security:** the decision endpoint and the registration endpoint accept only the right service; user tokens, even an admin's, are refused; disabled when no secret is configured.
+**Queues and dashboards:** queue, my-decisions and all views; filters, literal wildcards, sorting, paging; summary figures; overdue flagging (once, not for fresh or decided items, next level starts its own clock).
+**Real-process end-to-end (three services, real HTTP):** small request approved end to end; two-level request needing two different managers; rejection reason reaching the employee; delegation using the real manager list from the auth service; cancellation closing the approval; submitting while the approval service is down and catching up; a decision made while the request service is down delivered later; access enforced across services; queue content per manager; dashboard numbers from real data.
+**Frontend:** manager dashboard on real data (counts, chart, approval route, empty and error states), approvals list (views, server-side search, filters, paging), approval detail (approve with comment, reject needs a reason, delegate, blocked reasons, pending and conflicting sync notices, errors), employee request page showing who decided and why, sidebar, access checks.
 
 ## Mutation checks (tests that must fail when a rule is broken)
-Backend: employee ownership scope ignored; no version check; edits allowed after submit; writes not limited to the owner. Frontend: rounding down instead of half-up; edit not sending the loaded version; Submit enabled despite problems. Each change made a test fail, and the code was restored afterwards.
+Approval service: self-approval allowed, same manager on every level, delegation ignored, decided approvals decidable again, last level never completing, threshold off by one. Frontend: reject without a reason, buttons shown to managers who cannot act, list opening on the wrong view, delegate sending no user. Every change made a test fail; the code was restored afterwards.
 
-## Real-service end-to-end check (no browser)
-Real MySQL, the bootstrap script, both migrations, the admin CLI, both services and the Vite proxy; all calls through the proxy.
-- A token issued by the auth service was accepted by the Purchase Request service. A request was created, submitted (a second submit gave 409) and listed; a submitted request refused a document change (409).
-- Another employee got 404 for it and saw an empty list; admin and vendor got 403; no token and a tampered token got 401.
-- Procurement saw 0 requests until the request was approved in the database, then 1, and could not create requests (403).
-- Totals were exact: 2.5 x 19.99 + 3 x 0.10 = 50.28.
-- MySQL held the expected rows; history was stored in order; logs contained no tokens or passwords.
-- Observed token staleness: after an admin changed a user's role, the user's old token still returned 200 at the Purchase Request service until expiry (at most 15 minutes); signing in again gave a token with the new role, refused with 403.
+## Real full-stack run (no browser)
+Real MySQL, the bootstrap script with passwords containing `@ : / % #`, all three migrations, the admin CLI, the three services, and the Vite proxy; every call through the proxy.
+- A 160,000 INR request needed two levels: the first manager's second approval was refused (403); the second manager completed it; the employee then saw it approved by that manager with his comment.
+- The delegates list came from the real auth service and excluded the caller and non-managers.
+- The employee token was refused on the approvals API (403). The internal API returned 404 through the proxy, and 401 directly without a service token or with an admin's user token.
+- MySQL held the expected approval, steps (decided by the two managers) and outbox events; `approval_svc` was denied reading the other service's table; logs contained no tokens or passwords.
+
+## Defects found and fixed in this phase
+1. The shared contract accepted empty identifiers (an empty `request_id` created a workflow). Fixed with minimum lengths and a regression test.
+2. A log field named `level` overwrote the log severity in the JSON output. Fixed in the shared formatter (extra fields can no longer overwrite core fields) and in the approval service, with tests.
 
 ## Docker configuration checks (no Docker available)
-- Compose file: references, build contexts and Dockerfile paths, bind mounts, variables defined in `.env.example`, ports on 127.0.0.1 only, each service has its own database user. Pass (scripted).
-- Dockerfile COPY targets exist in the `backend/` build context and are not excluded by `.dockerignore`; ports consistent; non-root user; healthcheck present. Pass.
-- Image-equivalent run for the Purchase Request service: clean install of the pinned requirements plus the shared package as a normal package, then the migrate command, the server command, the Dockerfile healthcheck command, and refusal to start without a secret or a database setting. Pass.
-- `db-init` bootstrap script on real MySQL: works on an already-initialised server, creates the new service user, applies a changed password, rejects quotes and missing values before running SQL, is safe to re-run, and each service user is denied the other's database. Pass.
+Compose file: references, build contexts, mounts, variables defined in `.env.example`, ports on 127.0.0.1, one database user per service, internal secret on every service, no start-up dependency between the Purchase Request and Approval services (each tolerates the other being down). Dockerfile COPY paths and ports. Image-equivalent run for the Approval service: clean install of the pinned requirements and the shared package, migration, server command, Dockerfile healthcheck command, refusal to start without the internal secret. The `db-init` script on real MySQL creates all three users and isolates them. All pass.
 
 ## Not executed
-- `docker compose up`, building the images, the in-container healthchecks and start-up ordering; MySQL 8.4 specifically (tested on 8.0).
-- Any real-browser check: the new employee screens (dashboard, list, three-step form, detail), responsive layout, keyboard and screen-reader use, colour contrast, the Three.js scene.
-- Load, penetration and cross-browser testing.
-
-## Notes
-- Starlette prints a deprecation warning about its test client; Recharts and jsdom print size messages in frontend tests. Neither affects results.
+- `docker compose up`, building the images, in-container healthchecks and start-up ordering; MySQL 8.4 specifically (tested on 8.0).
+- Any real-browser check: the manager screens (dashboard, queue, detail, dialogs), the employee screens, responsive layout, keyboard and screen-reader use, contrast, the Three.js scene.
+- Load, failure-injection beyond stop/start of a service, penetration and cross-browser testing.

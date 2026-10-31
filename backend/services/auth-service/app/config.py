@@ -10,6 +10,7 @@ class Settings(BaseSettings):
 
     database_url: str | None = None  # or DB_HOST, DB_NAME, DB_USER, DB_PASSWORD (see app/dburl.py)
     jwt_secret: SecretStr
+    internal_jwt_secret: SecretStr | None = None  # enables /internal routes for other services; leave unset to disable them
     jwt_issuer: str = "procurehub-auth"
     jwt_audience: str = "procurehub"
     access_token_ttl_minutes: int = 15
@@ -22,11 +23,11 @@ class Settings(BaseSettings):
     docs_enabled: bool = True
     log_level: str = "INFO"
 
-    @field_validator("jwt_secret")
+    @field_validator("jwt_secret", "internal_jwt_secret")
     @classmethod
-    def _secret_is_long_enough(cls, v: SecretStr) -> SecretStr:
-        if len(v.get_secret_value()) < 32:
-            raise ValueError("JWT_SECRET must be at least 32 characters")
+    def _secret_is_long_enough(cls, v: SecretStr | None) -> SecretStr | None:
+        if v is not None and len(v.get_secret_value()) < 32:
+            raise ValueError("JWT secrets must be at least 32 characters")
         return v
 
 

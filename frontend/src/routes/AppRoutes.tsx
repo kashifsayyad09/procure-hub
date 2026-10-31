@@ -18,6 +18,8 @@ const Users = lazy(() => import('@/pages/admin/UsersPage'))
 const Requests = lazy(() => import('@/pages/employee/RequestsPage'))
 const RequestForm = lazy(() => import('@/pages/employee/RequestFormPage'))
 const RequestDetail = lazy(() => import('@/pages/employee/RequestDetailPage'))
+const Approvals = lazy(() => import('@/pages/manager/ApprovalsPage'))
+const ApprovalDetail = lazy(() => import('@/pages/manager/ApprovalDetailPage'))
 
 const only = (role: Role, el: JSX.Element) => <RequireAuth roles={[role]}>{el}</RequireAuth>
 
@@ -48,6 +50,8 @@ export function AppRoutes() {
           <Route path="employee/requests/:id" element={only('employee', <RequestDetail />)} />
           <Route path="employee/requests/:id/edit" element={only('employee', <RequestForm />)} />
           <Route path="manager" element={only('manager', <Manager />)} />
+          <Route path="manager/approvals" element={only('manager', <Approvals />)} />
+          <Route path="manager/approvals/:id" element={only('manager', <ApprovalDetail />)} />
           <Route path="procurement" element={only('procurement', <Procurement />)} />
           <Route path="vendor" element={only('vendor', <Vendor />)} />
           <Route path="finance" element={only('finance', <Finance />)} />

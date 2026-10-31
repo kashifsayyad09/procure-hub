@@ -1,11 +1,11 @@
 from datetime import date
 from typing import Literal
 
-from fastapi import APIRouter, Depends, Query, Response, status
+from fastapi import APIRouter, Depends, Query, Request, Response, status
 from procurehub_common.tokens import TokenClaims
 from sqlalchemy.orm import Session
 
-from .. import service
+from .. import approvals, service
 from ..database import get_db
 from ..deps import require_any_permission
 from ..models import Priority, PurchaseRequest, Status
@@ -42,6 +42,7 @@ def _out(r: PurchaseRequest) -> RequestOut:
     items = [ItemOut(id=i.id, line_no=i.line_no, description=i.description, quantity=i.quantity, unit=i.unit, unit_price=i.unit_price, notes=i.notes,
                      line_total=service.line_total(i.quantity, i.unit_price)) for i in r.items]
     return RequestOut(**base, justification=r.justification, requester_id=r.requester_id, requester_email=r.requester_email, cancel_reason=r.cancel_reason,
+                      decided_at=r.decided_at, decided_by_name=r.decided_by_name, decision_note=r.decision_note,
                       version=r.version, items=items, documents=[DocumentOut.model_validate(d) for d in r.documents],
                       history=[HistoryOut.model_validate(h) for h in r.history])
 
@@ -87,13 +88,19 @@ def update_request(request_id: str, body: RequestUpdate, principal: TokenClaims 
 
 
 @router.post("/{request_id}/submit", response_model=RequestOut)
-def submit_request(request_id: str, principal: TokenClaims = Depends(CAN_SUBMIT), db: Session = Depends(get_db)):
-    return _out(service.submit(db, principal, request_id))
+def submit_request(request_id: str, request: Request, principal: TokenClaims = Depends(CAN_SUBMIT), db: Session = Depends(get_db)):
+    req = service.submit(db, principal, request_id)
+    if request.app.state.approvals is not None:
+        approvals.register(db, request.app.state.approvals, req)  # if this fails, the retry loop registers it later
+    return _out(req)
 
 
 @router.post("/{request_id}/cancel", response_model=RequestOut)
-def cancel_request(request_id: str, body: CancelIn, principal: TokenClaims = Depends(CAN_SUBMIT), db: Session = Depends(get_db)):
-    return _out(service.cancel(db, principal, request_id, body))
+def cancel_request(request_id: str, body: CancelIn, request: Request, principal: TokenClaims = Depends(CAN_SUBMIT), db: Session = Depends(get_db)):
+    req = service.cancel(db, principal, request_id, body)
+    if request.app.state.approvals is not None:
+        approvals.notify_cancel(request.app.state.approvals, req, principal.name, body.reason)
+    return _out(req)
 
 
 @router.delete("/{request_id}", status_code=status.HTTP_204_NO_CONTENT)

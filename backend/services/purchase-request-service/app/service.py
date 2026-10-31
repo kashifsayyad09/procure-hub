@@ -1,10 +1,11 @@
 """Business rules for purchase requests. Routers stay thin; everything that decides who may do what lives here."""
 import logging
-from datetime import date, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from decimal import ROUND_HALF_UP, Decimal
 from uuid import uuid4
 
 from fastapi import HTTPException, status
+from procurehub_common.contracts.approval import DecisionNotice
 from procurehub_common.permissions import has_permission
 from procurehub_common.tokens import TokenClaims
 from sqlalchemy import ColumnElement, false, func, or_, select
@@ -91,9 +92,13 @@ def _item(i: ItemIn, line_no: int) -> PurchaseRequestItem:
     return PurchaseRequestItem(line_no=line_no, description=i.description, quantity=i.quantity, unit=i.unit, unit_price=i.unit_price, notes=i.notes)
 
 
-def _history(req: PurchaseRequest, principal: TokenClaims, from_status: str | None, to_status: str, note: str | None = None) -> None:
+def _log_change(req: PurchaseRequest, actor_id: str, actor_name: str, from_status: str | None, to_status: str, note: str | None = None) -> None:
     req.history.append(PurchaseRequestHistory(
-        seq=len(req.history) + 1, from_status=from_status, to_status=to_status, actor_id=principal.sub, actor_name=principal.name or "Unknown", note=note))
+        seq=len(req.history) + 1, from_status=from_status, to_status=to_status, actor_id=actor_id, actor_name=actor_name or "Unknown", note=note))
+
+
+def _history(req: PurchaseRequest, principal: TokenClaims, from_status: str | None, to_status: str, note: str | None = None) -> None:
+    _log_change(req, principal.sub, principal.name, from_status, to_status, note)
 
 
 def _require_draft(req: PurchaseRequest, action: str) -> None:
@@ -171,6 +176,28 @@ def cancel(db: Session, principal: TokenClaims, request_id: str, body: CancelIn)
     db.commit()
     db.refresh(req)
     log.info("request_cancelled", extra={"event": "request_cancelled", "request_id": req.id, "actor_id": principal.sub})
+    return req
+
+
+def apply_decision(db: Session, request_id: str, notice: DecisionNotice) -> PurchaseRequest:
+    """Called only by the Approval service. Idempotent: repeating the same decision changes nothing."""
+    req = db.scalar(select(PurchaseRequest).where(PurchaseRequest.id == request_id).with_for_update())
+    if req is None:
+        raise _err(status.HTTP_404_NOT_FOUND, "Purchase request not found.")
+    if req.status == notice.decision:
+        return req
+    if req.status != Status.SUBMITTED.value:
+        raise _err(status.HTTP_409_CONFLICT, f"Request is {req.status}; only a submitted request can be decided.")
+    decided = notice.decided_at
+    if decided.tzinfo is not None:
+        decided = decided.astimezone(UTC).replace(tzinfo=None)
+    previous = req.status
+    req.status, req.decided_at, req.decided_by_name, req.decision_note = notice.decision, decided, notice.actor_name, notice.note
+    req.version += 1
+    _log_change(req, notice.actor_id, notice.actor_name, previous, notice.decision, notice.note or notice.decision.capitalize())
+    db.commit()
+    db.refresh(req)
+    log.info("request_decided", extra={"event": "request_decided", "request_id": req.id, "number": req.number, "decision": notice.decision, "actor_id": notice.actor_id})
     return req
 
 

@@ -30,3 +30,21 @@ Browser --/api/v1--> Vite proxy (dev) --+--> auth-service (8001)             -->
 - **Purchase request service layers:** thin routers, `service.py` for business rules and ownership, SQLAlchemy models, Pydantic schemas. History and documents carry an explicit sequence number because MySQL timestamps only have one-second precision.
 - **Frontend:** `features/purchase-requests` (types, exact money helpers, status badge, timeline), employee pages for the dashboard, list, multi-step form and detail. The employee dashboard now uses real data; the other roles still use sample data.
 - **Database setup:** a one-shot `db-init` container runs `infrastructure/docker/db-bootstrap/bootstrap.sh` on every `docker compose up`. It is idempotent, so new services and changed passwords reach an existing data volume.
+
+## Phase 4 additions: how the services work together
+```
+employee --submit--> purchase-request-service --register (service token)--> approval-service <--decide-- manager
+                          ^                                                      |
+                          +------- decision (service token), retried until delivered
+```
+**Design decision.** Each service is the only writer of its own database. The Purchase Request service owns the request; the Approval service owns the approval workflow and keeps a snapshot of what managers must see, so it never reads another service's tables. They talk through authenticated internal calls that are idempotent:
+
+1. Submit saves the request as `submitted`, then registers it with the Approval service. If that call fails, the employee is not blocked; `approval_registered` stays false and a retry loop (every 20 s) registers it later. Registration is idempotent.
+2. A final decision is saved first in the Approval service (`decision_sync = pending`), then pushed to the Purchase Request service. If that fails the manager is not blocked; a retry loop delivers it. A refusal (for example the requester cancelled in the meantime) is recorded as `conflict` and shown to the manager.
+3. If the requester cancels, the Approval service is told and closes the workflow; if that message is lost, a later decision is refused with a conflict.
+4. Every state change also writes a row to an **outbox table** (`approval_events`) in the same transaction. Phase 10 (notifications, audit) and Phase 11 (SQS) will publish these; Phase 11 replaces the two retry loops with queues and dead-letter handling.
+
+**Service-to-service security.** Separate secret, audience and token type from user tokens; short lifetime; the receiver names which callers it accepts. Internal paths live under `/internal` and are hidden from OpenAPI. They must not be routed by the ingress (Phase 14 adds network policies too).
+
+**Shared package additions:** service tokens, an HTTP client (short timeouts, one retry on network errors, request-ID propagation, `ServiceUnavailable` vs `ServiceRejected`), message contracts, and the user-token dependencies that were duplicated.
+**Request ID** is propagated on every service call, so one transaction can be followed through all three logs.

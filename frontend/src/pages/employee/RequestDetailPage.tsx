@@ -79,6 +79,12 @@ export default function RequestDetailPage() {
             <div><dt className="text-sm text-muted">Created</dt><dd>{dateTime(r.created_at)}</dd></div>
             <div><dt className="text-sm text-muted">Total</dt><dd className="font-medium">{money(r.total_amount, r.currency)}</dd></div>
             <div className="sm:col-span-2"><dt className="text-sm text-muted">Why it is needed</dt><dd className="whitespace-pre-wrap">{r.justification || 'Not set'}</dd></div>
+            {r.decided_at && (
+              <div className="sm:col-span-2">
+                <dt className="text-sm text-muted">Decision</dt>
+                <dd>{r.status === 'approved' ? 'Approved' : 'Rejected'} by {r.decided_by_name ?? 'a manager'}, {dateTime(r.decided_at)}{r.decision_note && <span className="block whitespace-pre-wrap">{r.decision_note}</span>}</dd>
+              </div>
+            )}
             {r.cancel_reason && <div className="sm:col-span-2"><dt className="text-sm text-muted">Cancellation reason</dt><dd>{r.cancel_reason}</dd></div>}
           </dl>
         </Card>

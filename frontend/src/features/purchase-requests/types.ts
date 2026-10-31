@@ -24,6 +24,7 @@ export interface RequestSummary {
 }
 export interface RequestDetail extends RequestSummary {
   justification: string; requester_id: string; requester_email: string; cancel_reason: string | null; version: number
+  decided_at: string | null; decided_by_name: string | null; decision_note: string | null
   items: RequestItem[]; documents: RequestDocument[]; history: HistoryEntry[]
 }
 export interface RequestPage { items: RequestSummary[]; total: number; page: number; page_size: number }
