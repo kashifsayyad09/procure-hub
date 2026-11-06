@@ -1,4 +1,4 @@
-# Security notes (Phases 2 to 4)
+# Security notes (Phases 2 to 5)
 
 ## What is enforced
 - **Authorization is server-side.** Every protected route checks the token, then loads the user so a role change or suspension takes effect immediately. Route guards in React only improve navigation.
@@ -31,6 +31,15 @@
 - **Least privilege:** `approval_svc` can reach only `approval_db` (verified: reading another service's table is denied).
 - **Logs:** a bug where an extra log field called `level` replaced the severity was found and fixed; the shared formatter now prevents any extra field from overwriting a core field. Logs contain no tokens or passwords (checked in the live run).
 
+## Added in Phase 5
+- Vendors are isolated: a vendor user can read and change only the record whose `owner_id` is their token subject; anyone else gets 404. The owner comes from the token, never the body.
+- The directory, summary and every review action need `vendor:read` or `vendor:verify`; employees, managers and finance get 403 on everything.
+- Two-person verification and version-checked decisions (see `docs/API.md`). Every state change is written to the history with the actor, and to the outbox.
+- Input is validated and cleaned (control characters removed, email, phone, web address, tax ID, category list). Web addresses must be http or https. Links open with `rel="noopener noreferrer nofollow"`.
+- Unique indexes on tax ID and owner are the last guard against two requests racing; a clash returns 409, not 500 (tested).
+- The internal vendor lookup returns no tax ID or owner, accepts only listed services with a service token, and is not routed by the dev proxy.
+- A duplicate tax ID answers 409 with a message, which tells a vendor that the tax ID is registered. This is a deliberate usability choice.
+
 ## Known limitations (later phases)
 - **Any manager can decide any request.** There is no department or reporting-line routing yet because there is no department directory. The history records who decided.
 - Approval levels and the overdue time come from configuration, not an admin screen.
@@ -46,3 +55,4 @@
 - Access tokens use a shared secret. Services that verify them locally see a role change up to 15 minutes late; consider asymmetric keys before production.
 - The Docker image and Compose stack were not run here (no Docker). The service and scripts were tested against a real MySQL 8.0 server instead.
 - `npm audit` and `pip-audit` were clean when run. Re-run before each release.
+- Vendor: documents (registration certificates, tax certificates) are not uploaded yet; only profile data is stored. A vendor registered by staff has no account link until an administrator-side linking feature exists. Suspending a vendor does not yet cancel anything in flight (no RFQs or orders exist). Notifications about verification arrive in Phase 10.

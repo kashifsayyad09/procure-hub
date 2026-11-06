@@ -34,6 +34,7 @@ services:
       AUTH_DB_PASSWORD: ${AUTH_DB_PASSWORD:?Set AUTH_DB_PASSWORD in .env}
       PURCHASE_REQUEST_DB_PASSWORD: ${PURCHASE_REQUEST_DB_PASSWORD:?Set PURCHASE_REQUEST_DB_PASSWORD in .env}
       APPROVAL_DB_PASSWORD: ${APPROVAL_DB_PASSWORD:?Set APPROVAL_DB_PASSWORD in .env}
+      VENDOR_DB_PASSWORD: ${VENDOR_DB_PASSWORD:?Set VENDOR_DB_PASSWORD in .env}
     volumes:
       - ./infrastructure/docker/db-bootstrap:/bootstrap:ro
     depends_on:
@@ -124,6 +125,33 @@ services:
       - "127.0.0.1:8003:8003"
     depends_on:
       approval-migrate:
+        condition: service_completed_successfully
+
+  vendor-migrate:
+    build: { context: ./backend, dockerfile: services/vendor-service/Dockerfile }
+    command: ["alembic", "upgrade", "head"]
+    environment:
+      <<: *db-env
+      DB_NAME: vendor_db
+      DB_USER: vendor_svc
+      DB_PASSWORD: ${VENDOR_DB_PASSWORD}
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
+    restart: "no"
+
+  vendor-service:
+    build: { context: ./backend, dockerfile: services/vendor-service/Dockerfile }
+    restart: unless-stopped
+    environment:
+      <<: *db-env
+      DB_NAME: vendor_db
+      DB_USER: vendor_svc
+      DB_PASSWORD: ${VENDOR_DB_PASSWORD}
+    ports:
+      - "127.0.0.1:8004:8004"
+    depends_on:
+      vendor-migrate:
         condition: service_completed_successfully
 
 volumes:

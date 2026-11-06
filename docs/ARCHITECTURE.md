@@ -48,3 +48,11 @@ employee --submit--> purchase-request-service --register (service token)--> appr
 
 **Shared package additions:** service tokens, an HTTP client (short timeouts, one retry on network errors, request-ID propagation, `ServiceUnavailable` vs `ServiceRejected`), message contracts, and the user-token dependencies that were duplicated.
 **Request ID** is propagated on every service call, so one transaction can be followed through all three logs.
+
+## Phase 5 additions: vendors
+- **vendor-service** (port 8004, `vendor_db`) follows the same layout as the other services: app factory, `service.py` for rules, thin routers, Alembic migration, outbox.
+- **Ownership:** a vendor record stores the auth user id of its owner (no cross-database key). Vendor users see only that record. Procurement and administrators see all, and can register vendors that have no account yet.
+- **Verification** is a two-person control: whoever submitted a profile (or changed a verified vendor's identity details) cannot be the one to verify it.
+- **For later services:** an internal lookup (`VendorRef` contract in `procurehub_common`) lets the Quotation service check vendor status without touching `vendor_db`.
+- **Frontend:** `features/vendors` (types, labels, status badge, shared profile view, form, action buttons), vendor pages under `/app/vendor`, staff pages under `/app/procurement/vendors` and `/app/admin/vendors` (same components, the base path comes from the role). The server returns the list of `actions` the caller may take, so screens never offer what will be refused.
+- **Dev proxy:** `/api/v1/vendors` goes to port 8004.

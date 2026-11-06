@@ -289,8 +289,8 @@ describe('request detail', () => {
 describe('access', () => {
   it('keeps other roles and signed-out visitors out of the request pages', async () => {
     signIn('vendor')
-    mockApi(() => ({ body: {} }))
+    mockApi(() => ({ status: 404, body: { detail: 'You have not registered a vendor profile yet.' } }))
     renderAt('/app/employee/requests/new')
-    expect(await screen.findByRole('heading', { level: 1, name: 'Your business with us' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { level: 1, name: 'Welcome' })).toBeInTheDocument()
   })
 })

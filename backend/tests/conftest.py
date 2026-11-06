@@ -1,4 +1,4 @@
-"""Starts the auth, purchase request and approval services as real processes (SQLite files, real HTTP between them)
+"""Starts the auth, purchase request, approval and vendor services as real processes (SQLite files, real HTTP between them)
 so the whole procurement hand-off can be tested, including what happens when one service is down."""
 import os
 import socket
@@ -11,7 +11,8 @@ import httpx
 import pytest
 
 BACKEND = Path(__file__).resolve().parent.parent
-SERVICES = {"auth": ("auth-service", "auth.db"), "pr": ("purchase-request-service", "pr.db"), "approval": ("approval-service", "approval.db")}
+SERVICES = {"auth": ("auth-service", "auth.db"), "pr": ("purchase-request-service", "pr.db"), "approval": ("approval-service", "approval.db"),
+            "vendor": ("vendor-service", "vendor.db")}
 PASSWORD = "Valid-Passw0rd-2026"  # contains no one's email name, so it passes the password policy
 
 
@@ -50,7 +51,7 @@ class Stack:
 
     def env(self, name: str) -> dict:
         e = dict(self.base_env)
-        # E2E_AUTH_DB_URL, E2E_PR_DB_URL, E2E_APPROVAL_DB_URL run the same tests against MySQL instead of SQLite files
+        # E2E_AUTH_DB_URL, E2E_PR_DB_URL, E2E_APPROVAL_DB_URL, E2E_VENDOR_DB_URL run the same tests against MySQL instead of SQLite files
         e["DATABASE_URL"] = os.environ.get(f"E2E_{name.upper()}_DB_URL") or f"sqlite:///{self.tmp / SERVICES[name][1]}"
         if name == "pr":
             e["APPROVAL_SERVICE_URL"] = self.url("approval")
@@ -108,12 +109,13 @@ def stack(tmp_path_factory):
             s.migrate(n)
         subprocess.run([sys.executable, "-m", "app.cli", "create-admin", "--email", "root@example.com", "--name", "Root Admin"], cwd=s.cwd("auth"),
                        env={**s.env("auth"), "ADMIN_PASSWORD": PASSWORD}, check=True, capture_output=True)
-        for n in ("auth", "pr", "approval"):
+        for n in ("auth", "pr", "approval", "vendor"):
             s.start(n)
         s.tokens["admin"] = s.login("root@example.com")
         for email, name, role in [("erin@example.com", "Erin Employee", "employee"), ("emma@example.com", "Emma Employee", "employee"),
                                   ("mia@example.com", "Mia Manager", "manager"), ("max@example.com", "Max Manager", "manager"), ("mona@example.com", "Mona Manager", "manager"),
-                                  ("pat@example.com", "Pat Procurement", "procurement"), ("vera@example.com", "Vera Vendor", "vendor")]:
+                                  ("pat@example.com", "Pat Procurement", "procurement"), ("paul@example.com", "Paul Procurement", "procurement"),
+                                  ("vera@example.com", "Vera Vendor", "vendor"), ("victor@example.com", "Victor Vendor", "vendor")]:
             s.make_user(email, name, role)
         yield s
     finally:

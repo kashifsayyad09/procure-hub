@@ -84,3 +84,29 @@ Called with a service token (`Authorization: Bearer ...`, separate secret `INTER
 | `GET /internal/v1/users?role=manager` (auth service) | approval-service | active managers, for delegation |
 
 Message shapes live in `backend/shared/procurehub_common/contracts/approval.py` (versioned, validated on both sides).
+
+# API (Phase 5: vendor service)
+
+Base path `/api/v1/vendors`. Same bearer token as the other services. Vendor users (`vendor_profile:manage`) reach only the record they own; procurement and administrators (`vendor:read`, `vendor:manage`, `vendor:verify`) reach all of them. Someone else's record answers 404, never 403.
+
+| Method and path | Who | Result |
+|---|---|---|
+| `GET /categories` | vendor, procurement, admin | the fixed category list `[{id, label}]` |
+| `GET /summary` | procurement, admin | `counts` per status, `verified_by_category`, `monthly` registrations (6 months) |
+| `GET /me` | vendor | the caller's own vendor record, or 404 until they register |
+| `POST /` | vendor | registers the caller's company as a draft. One record per vendor user (409 after that) |
+| `POST /onboard` | procurement, admin | registers a vendor with no linked account yet |
+| `GET /` | procurement, admin | paged directory. `status`, `category`, `country`, `q` (name, number, tax ID, city; wildcards are literal), `sort`, `order`, `page`, `page_size` (max 100) |
+| `GET /{id}` | owner, procurement, admin | full record: profile, contacts, history, `completeness`, and for the caller `actions` plus a plain-language `blocked_reason` |
+| `PUT /{id}` | owner, procurement, admin | replaces the profile; body carries the `version` it was loaded at (409 if stale) |
+| `POST /{id}/submit` | owner, procurement, admin | draft or sent-back to pending. 422 lists what is missing |
+| `POST /{id}/verify` `{version, note?}` | procurement, admin | pending to verified |
+| `POST /{id}/reject` `{version, reason}` | procurement, admin | pending to rejected (sent back); the vendor sees the reason |
+| `POST /{id}/suspend` `{version, reason}` | procurement, admin | verified to suspended |
+| `POST /{id}/reinstate` `{version, note?}` | procurement, admin | suspended to verified |
+
+**Status flow:** draft, then pending, then verified or rejected (rejected goes back to pending after the vendor fixes it); verified can be suspended and reinstated.
+**Rules:** a reviewer cannot verify or reject a profile they submitted themselves (403), so two people are always involved; verify, reject, suspend and reinstate carry the `version` the reviewer looked at, so a profile edited meanwhile must be looked at again (409); changing the company name, tax ID, registration number or country of a verified vendor puts it back to pending; a suspended vendor cannot edit its own profile; tax IDs are normalised (upper case, letters and digits only) and unique; the owner always comes from the token, never the body. Submitting needs: tax ID, street address, city, country, at least one category, and one contact with a name and an email.
+
+## Internal API (service to service)
+`GET /internal/v1/vendors/{id}` and `POST /internal/v1/vendors/lookup {ids}` (up to 100) return a `VendorRef` (`procurehub_common.contracts.vendor`): id, number, names, `status`, country, currency, payment terms, categories, primary contact. No tax ID, no owner. Unknown ids are left out of the lookup. Callers must be on the allowed list (quotation, purchase order, invoice, SI-Talker, MCP) and use a service token; user tokens, even an administrator's, are refused (401). Disabled (503) when `INTERNAL_JWT_SECRET` is not set. Phase 6 uses it to refuse RFQ invitations to vendors that are not `verified`.

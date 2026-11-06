@@ -12,6 +12,11 @@ const Employee = lazy(() => import('@/pages/employee/EmployeeDashboard'))
 const Manager = lazy(() => import('@/pages/manager/ManagerDashboard'))
 const Procurement = lazy(() => import('@/pages/procurement/ProcurementDashboard'))
 const Vendor = lazy(() => import('@/pages/vendor/VendorDashboard'))
+const VendorProfile = lazy(() => import('@/pages/vendor/VendorProfilePage'))
+const VendorProfileForm = lazy(() => import('@/pages/vendor/VendorProfileFormPage'))
+const Vendors = lazy(() => import('@/pages/procurement/VendorsPage'))
+const VendorDetail = lazy(() => import('@/pages/procurement/VendorDetailPage'))
+const VendorForm = lazy(() => import('@/pages/procurement/VendorFormPage'))
 const Finance = lazy(() => import('@/pages/finance/FinanceDashboard'))
 const Admin = lazy(() => import('@/pages/admin/AdminDashboard'))
 const Users = lazy(() => import('@/pages/admin/UsersPage'))
@@ -53,10 +58,20 @@ export function AppRoutes() {
           <Route path="manager/approvals" element={only('manager', <Approvals />)} />
           <Route path="manager/approvals/:id" element={only('manager', <ApprovalDetail />)} />
           <Route path="procurement" element={only('procurement', <Procurement />)} />
+          <Route path="procurement/vendors" element={only('procurement', <Vendors />)} />
+          <Route path="procurement/vendors/new" element={only('procurement', <VendorForm />)} />
+          <Route path="procurement/vendors/:id" element={only('procurement', <VendorDetail />)} />
+          <Route path="procurement/vendors/:id/edit" element={only('procurement', <VendorForm />)} />
           <Route path="vendor" element={only('vendor', <Vendor />)} />
+          <Route path="vendor/profile" element={only('vendor', <VendorProfile />)} />
+          <Route path="vendor/profile/edit" element={only('vendor', <VendorProfileForm />)} />
           <Route path="finance" element={only('finance', <Finance />)} />
           <Route path="admin" element={only('admin', <Admin />)} />
           <Route path="admin/users" element={only('admin', <Users />)} />
+          <Route path="admin/vendors" element={only('admin', <Vendors />)} />
+          <Route path="admin/vendors/new" element={only('admin', <VendorForm />)} />
+          <Route path="admin/vendors/:id" element={only('admin', <VendorDetail />)} />
+          <Route path="admin/vendors/:id/edit" element={only('admin', <VendorForm />)} />
         </Route>
         <Route path="*" element={<NotFound />} />
       </Routes>

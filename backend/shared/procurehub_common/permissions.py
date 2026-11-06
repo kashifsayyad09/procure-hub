@@ -14,7 +14,7 @@ PERMISSIONS: dict[Role, frozenset[str]] = {
         "spend:read_department", "notification:read", "si_talker:use",
     }),
     Role.PROCUREMENT: frozenset({
-        "purchase_request:read_approved", "rfq:manage", "vendor:read", "quotation:compare",
+        "purchase_request:read_approved", "rfq:manage", "vendor:read", "vendor:manage", "vendor:verify", "quotation:compare",
         "purchase_order:create", "purchase_order:read", "analytics:read", "notification:read", "si_talker:use",
     }),
     Role.VENDOR: frozenset({
@@ -25,7 +25,7 @@ PERMISSIONS: dict[Role, frozenset[str]] = {
         "invoice:read", "invoice:match", "payment:track", "receipt:read", "report:generate", "notification:read",
     }),
     Role.ADMIN: frozenset({
-        "user:read", "user:manage", "role:assign", "audit:read", "settings:manage", "health:read", "notification:read",
+        "user:read", "user:manage", "role:assign", "vendor:read", "vendor:manage", "vendor:verify", "audit:read", "settings:manage", "health:read", "notification:read",
     }),
 }
 

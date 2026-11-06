@@ -1,16 +1,18 @@
-# Next phase: Phase 5, Vendor Service
+# Next phase: Phase 6, RFQ and Quotation Service
 
-Objective: Vendor microservice (FastAPI, `vendor_db`, Alembic): vendor onboarding and registration, vendor profiles and contacts, categories, a vendor directory, verification status, the vendor portal screens, authorization tests.
+Objective: Quotation microservice (FastAPI, `quotation_db`, Alembic): RFQ creation from approved purchase requests, vendor invitations, vendor quotation submission with line items, quotation comparison dashboard, supplier evaluation, supplier selection records, workflow integration tests.
 
 Decisions to settle first:
-- How a vendor user relates to a vendor record. Vendor users already exist in the auth service (role `vendor`). Recommended: the vendor record stores the auth user id of its owner (no foreign key), and a vendor can manage only the record whose owner id equals their token subject, the same ownership pattern as purchase requests. Administrators or procurement create or verify vendors (`vendor:read` exists for procurement; add a `vendor:verify` permission).
-- Who can verify a vendor, and what verification means for Phase 6 (only verified vendors can be invited to an RFQ).
+- RFQ source: an RFQ copies a snapshot of an approved request's items (read through the Purchase Request service API, as procurement already can). Decide whether one request can have several RFQs, and what happens to an RFQ if the request is later cancelled.
+- Invitations: only vendors whose status is `verified` may be invited. The Vendor service already exposes `POST /internal/v1/vendors/lookup` (service name `quotation-service` is on its allowed list). Decide how invitations reach vendors before notifications exist (Phase 10): the vendor portal lists RFQs they were invited to (`rfq:read_invited`).
+- Evaluation: how quotations are scored (price, delivery time, vendor terms from the vendor profile) and who may select the winner (`rfq:manage`, `quotation:compare`).
+- Vendor suspended or changed after an invitation: recommended that submitting a quotation re-checks status.
 
-Reuse from Phase 4:
-- Service layout and test patterns in `backend/services/approval-service` and `purchase-request-service` (app factory, `service.py` business layer, ownership checks, MySQL test option, migration tests, mutation-style rule tests).
-- `backend/shared/procurehub_common`: roles and permissions, `make_user_auth`, logging, health, service tokens and contracts for any call to another service (an RFQ invitation will need the vendor list from this service).
-- `infrastructure/docker/db-bootstrap/bootstrap.sh`: add `ensure_user vendor_svc vendor_db VENDOR_DB_PASSWORD`, the variable to `.env.example` and the `db-init` service; compose migrate and service pair; Vite proxy rule for `/api/v1/vendors`.
-- `backend/tests`: add vendor scenarios to the cross-service end-to-end test.
-- Frontend: `RequireAuth`, `DataTable`, `Modal`, `Drawer`, the multi-step form pattern from `RequestFormPage`, status badges, `ApprovalTimeline`; replace the vendor sample dashboard.
+Reuse from Phase 5:
+- Service layout and test patterns in `backend/services/vendor-service` (app factory, `service.py`, ownership scope, version-checked commands, unique-index race handling, migration tests, MySQL option, mutation-style rule tests, outbox).
+- `backend/shared/procurehub_common`: `contracts/vendor.py` (`VendorRef`, `VendorLookup`), `service_client`, service tokens, permissions (`rfq:manage`, `rfq:read_invited`, `quotation:submit`, `quotation:compare` already declared).
+- `infrastructure/docker/db-bootstrap/bootstrap.sh` (`ensure_user quotation_svc quotation_db QUOTATION_DB_PASSWORD`), `.env.example`, the `db-init` service, a compose migrate and service pair on port 8005, a Vite proxy rule for `/api/v1/rfqs` and `/api/v1/quotations`.
+- `backend/tests`: add the service to the `Stack` and an RFQ scenario to the end-to-end tests (request approved, RFQ, invited verified vendor quotes, selection).
+- Frontend: `features/vendors` (status badge, directory and detail patterns, multi-step form with a field array, review dialogs with reasons), `DataTable`, `Modal`, `Drawer`, `TrendChart`; replace the procurement sample dashboard and add RFQ nav items (`navConfig.ts`).
 
-Constraints: no shared models or cross-database joins; ownership enforced in the service; vendors see only their own record; no hardcoded secrets; keep one cumulative ZIP.
+Constraints: no shared models or cross-database joins; ownership and role rules enforced in the service; vendors see only RFQs they were invited to and only their own quotations; no hardcoded secrets; keep one cumulative ZIP.

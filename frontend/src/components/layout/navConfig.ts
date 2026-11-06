@@ -10,8 +10,8 @@ const talker: NavItem = { label: 'SI-Talker', icon: Sparkles, phase: 12 }
 export const NAV: Record<Role, NavItem[]> = {
   employee: [dash, { label: 'My requests', icon: FilePlus2, to: '/app/employee/requests' }, talker],
   manager: [dash, { label: 'Approvals', icon: ClipboardCheck, to: '/app/manager/approvals' }, talker],
-  procurement: [dash, { label: 'RFQs', icon: FileText, phase: 6 }, { label: 'Purchase orders', icon: Truck, phase: 7 }, { label: 'Vendors', icon: Building2, phase: 5 }, talker],
-  vendor: [dash, { label: 'Profile', icon: Building2, phase: 5 }, { label: 'Quotations', icon: FileText, phase: 6 }, { label: 'Orders', icon: Truck, phase: 7 }],
+  procurement: [dash, { label: 'RFQs', icon: FileText, phase: 6 }, { label: 'Purchase orders', icon: Truck, phase: 7 }, { label: 'Vendors', icon: Building2, to: '/app/procurement/vendors' }, talker],
+  vendor: [dash, { label: 'Profile', icon: Building2, to: '/app/vendor/profile' }, { label: 'Quotations', icon: FileText, phase: 6 }, { label: 'Orders', icon: Truck, phase: 7 }],
   finance: [dash, { label: 'Invoices', icon: ReceiptText, phase: 9 }, { label: 'Matching', icon: BadgeCheck, phase: 9 }, { label: 'Receipts', icon: Boxes, phase: 8 }],
-  admin: [dash, { label: 'Users and roles', icon: Users, to: '/app/admin/users' }, { label: 'Audit log', icon: ScrollText, phase: 10 }, { label: 'Settings', icon: Settings, phase: 17 }, { label: 'System health', icon: ShieldCheck, phase: 16 }],
+  admin: [dash, { label: 'Users and roles', icon: Users, to: '/app/admin/users' }, { label: 'Vendors', icon: Building2, to: '/app/admin/vendors' }, { label: 'Audit log', icon: ScrollText, phase: 10 }, { label: 'Settings', icon: Settings, phase: 17 }, { label: 'System health', icon: ShieldCheck, phase: 16 }],
 }

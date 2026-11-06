@@ -35,3 +35,10 @@ Migration `0001`:
 - `approval_events`: the outbox, with `published_at` empty until Phases 10/11.
 
 Verified on SQLite and real MySQL 8.0.46: upgrade, no drift from the models, downgrade, and two concurrent decisions on one step producing exactly one decision. The bootstrap script now also creates `approval_svc` with rights on `approval_db` only.
+
+## vendor_db (Phase 5)
+Migration `0001` (user `vendor_svc`, rights on `vendor_db` only):
+- `vendors`: `number` (`VND-<year>-<6 digits>`, unique), `owner_id` (the auth user; unique, nullable, not a foreign key), legal and trading names, `tax_id` (normalised, unique, nullable), registration number, website, address, `country`, `payment_terms_days`, `currency`, `status` (draft, pending, verified, rejected, suspended), `status_note`, `submitted_by_id` (the reviewer must be someone else), submission and verification details, optimistic-locking `version`.
+- `vendor_categories` (unique per vendor and category), `vendor_contacts` (one primary), `vendor_history` (explicit `seq`), `vendor_events` (outbox, `published_at` empty until Phases 10/11), `number_sequences`.
+
+Verified on SQLite and real MySQL 8.0.46: upgrade, no drift from the models, downgrade, the whole suite, and a real service process running as `vendor_svc`, which is refused access to `approval_db`.

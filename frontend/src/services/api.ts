@@ -1,6 +1,7 @@
 import type { SessionUser, TokenResponse, UserPage, UserRecord } from '@/types/auth'
 import type { Role } from '@/types/roles'
 import type { ApprovalDetail, ApprovalPage, ApprovalQuery, ApprovalsSummary, Delegate } from '@/features/approvals/types'
+import type { VendorCategory, VendorDetail, VendorInput, VendorPage, VendorQuery, VendorsSummary } from '@/features/vendors/types'
 import type { RequestDetail, RequestInput, RequestPage, RequestQuery, RequestsSummary, RequestDocument } from '@/features/purchase-requests/types'
 
 const BASE = '/api/v1'
@@ -148,4 +149,30 @@ export const approvalsApi = {
   reject: (id: string, reason: string) => request<ApprovalDetail>(`/approvals/${id}/reject`, { method: 'POST', body: JSON.stringify({ reason }) }),
   delegate: (id: string, userId: string, note?: string) => request<ApprovalDetail>(`/approvals/${id}/delegate`, { method: 'POST', body: JSON.stringify({ user_id: userId, note: note || null }) }),
   delegates: () => request<Delegate[]>('/approvals/delegates'),
+}
+
+const post = <T>(path: string, body?: unknown) => request<T>(path, { method: 'POST', body: body === undefined ? undefined : JSON.stringify(body) })
+
+export const vendorsApi = {
+  list(query: VendorQuery) {
+    const p = new URLSearchParams({ page: String(query.page), page_size: String(query.page_size) })
+    if (query.q) p.set('q', query.q)
+    if (query.status) p.set('status', query.status)
+    if (query.category) p.set('category', query.category)
+    if (query.sort) p.set('sort', query.sort)
+    if (query.order) p.set('order', query.order)
+    return request<VendorPage>(`/vendors?${p}`)
+  },
+  summary: () => request<VendorsSummary>('/vendors/summary'),
+  categories: () => request<VendorCategory[]>('/vendors/categories'),
+  mine: () => request<VendorDetail>('/vendors/me'),
+  get: (id: string) => request<VendorDetail>(`/vendors/${id}`),
+  register: (body: VendorInput) => post<VendorDetail>('/vendors', body),
+  onboard: (body: VendorInput) => post<VendorDetail>('/vendors/onboard', body),
+  update: (id: string, body: VendorInput & { version: number }) => request<VendorDetail>(`/vendors/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
+  submit: (id: string) => post<VendorDetail>(`/vendors/${id}/submit`),
+  verify: (id: string, version: number, note?: string) => post<VendorDetail>(`/vendors/${id}/verify`, { version, note: note || null }),
+  reject: (id: string, version: number, reason: string) => post<VendorDetail>(`/vendors/${id}/reject`, { version, reason }),
+  suspend: (id: string, version: number, reason: string) => post<VendorDetail>(`/vendors/${id}/suspend`, { version, reason }),
+  reinstate: (id: string, version: number, note?: string) => post<VendorDetail>(`/vendors/${id}/reinstate`, { version, note: note || null }),
 }

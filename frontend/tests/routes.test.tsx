@@ -67,7 +67,7 @@ describe('routing', () => {
     expect(await screen.findByText('Page not found')).toBeInTheDocument()
   })
 
-  it.each(ROLES.filter((r) => r.id !== 'employee' && r.id !== 'manager'))('renders the $label dashboard from sample data', async (role) => {
+  it.each(ROLES.filter((r) => !['employee', 'manager', 'vendor'].includes(r.id)))('renders the $label dashboard from sample data', async (role) => {
     mockMatchMedia(true)
     signIn(role.id)
     renderAt(role.path)

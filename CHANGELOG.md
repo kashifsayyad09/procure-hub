@@ -1,5 +1,21 @@
 # Changelog
 
+## Phase 5 (0.5.0): Vendor Service
+### Added
+- Vendor microservice (FastAPI, `vendor_db`, Alembic): registration by vendors and by staff, profiles with contacts, categories, payment terms and tax ID, completeness checks, verification (submit, verify, send back with a reason, suspend, reinstate) with a second-reviewer rule and version-checked decisions, directory with search, filters and paging, summary figures, history, and an outbox of events for Phases 10 and 11.
+- Internal vendor lookup for later services and the `VendorRef` contract in the shared package.
+- Permissions `vendor:manage` and `vendor:verify` (procurement and administrators) and `vendor:read` for administrators.
+- Vendor portal: dashboard on real data, profile page, four-step registration and edit form. Procurement and administrator screens: vendor directory, vendor detail with review dialogs, onboarding form.
+- Compose services `vendor-migrate` and `vendor-service`; bootstrap creates `vendor_svc`; Vite proxy rule for `/api/v1/vendors`.
+- 110 vendor tests (111 on MySQL), 4 new end-to-end tests, 31 new frontend tests.
+### Changed
+- `.env` needs one new variable: `VENDOR_DB_PASSWORD`.
+- The vendor dashboard no longer uses sample data; the sidebar links to Profile (vendor), Vendors (procurement and administrator).
+- Cross-service end-to-end stack starts four services; `scripts/test-all.sh` runs the vendor service.
+- `frontend/package-lock.json` regenerated (the Phase 4 lockfile was out of sync with `package.json`).
+### Fixed
+- Re-saving unchanged categories caused a 500 (insert before delete on a unique index). A registration race returned 500 instead of 409.
+
 ## Phase 4 (0.4.0): Approval Service
 ### Added
 - Approval microservice (FastAPI, `approval_db`, Alembic): multi-level approval by amount and currency, approve, reject with reason, delegation, overdue flagging, queue, my-decisions and all views, dashboard summary, full history, and an outbox of events for Phases 10 and 11.
