@@ -35,4 +35,5 @@ ensure_user auth_svc auth_db AUTH_DB_PASSWORD
 ensure_user purchase_request_svc purchase_request_db PURCHASE_REQUEST_DB_PASSWORD
 ensure_user approval_svc approval_db APPROVAL_DB_PASSWORD
 ensure_user vendor_svc vendor_db VENDOR_DB_PASSWORD
+ensure_user quotation_svc quotation_db QUOTATION_DB_PASSWORD
 echo "database bootstrap complete"

@@ -1,5 +1,19 @@
 # Changelog
 
+## Phase 6 (0.6.0): RFQ and Quotation Service
+### Added
+- Quotation microservice (FastAPI, `quotation_db`, Alembic): RFQs created from approved purchase requests (one live RFQ per request), verified-vendor invitations, issue, extend, close, cancel; vendor quotations (drafts, exact-decimal line totals, validity and lead time, submit, withdraw, decline); sealed bids until the deadline or closing; comparison per currency (no conversion); deterministic supplier scoring (price and delivery calculated, compliance and terms entered with reasons); supplier selection with justification, vendor re-check, missing-items acknowledgement, idempotency, revocation and full history; outbox events; award contract for Phase 7.
+- Internal APIs: purchase request service `GET /internal/v1/purchase-requests/{id}` and `/approved` (with `PurchaseRequestRef`), vendor service `GET /internal/v1/vendors/by-owner/{user_id}`, quotation service `GET /internal/v1/rfqs/{id}/award` (with `AwardRef`).
+- Procurement screens: RFQ list, new RFQ (pick an approved request), RFQ detail (invitations, sealed quotation list, history), edit, comparison dashboard (evaluation, selection, revoke). Vendor screens: invited RFQs, RFQ detail, quotation form.
+- Compose services `quotation-migrate` and `quotation-service`; bootstrap creates `quotation_svc`; Vite proxy for `/api/v1/rfqs` and `/api/v1/quotations`.
+- 235 quotation tests (237 on MySQL), 7 new tests in other services, 3 new end-to-end tests, 60 new frontend tests.
+### Changed
+- `.env` needs one new variable: `QUOTATION_DB_PASSWORD`.
+- Sidebar: procurement gets RFQs, vendors get RFQs and quotations.
+- The cross-service end-to-end stack starts five services; `scripts/test-all.sh` runs the quotation service.
+### Fixed
+- (Found by the new tests before release) editing a quotation draft hit a unique index; selection history order within one second; MySQL-incompatible migration downgrade; manual score formatting.
+
 ## Phase 5 (0.5.0): Vendor Service
 ### Added
 - Vendor microservice (FastAPI, `vendor_db`, Alembic): registration by vendors and by staff, profiles with contacts, categories, payment terms and tax ID, completeness checks, verification (submit, verify, send back with a reason, suspend, reinstate) with a second-reviewer rule and version-checked decisions, directory with search, filters and paging, summary figures, history, and an outbox of events for Phases 10 and 11.
@@ -35,7 +49,6 @@
 - New `npm audit` advisory (minimatch below 11.0.1, a denial of service in lint tooling): `overrides` in `frontend/package.json` pins the patched 11.x; lint, tests and build verified. (npm's own suggested fix, downgrading ESLint to version 4, was not used.)
 
 ## Phase 3 (0.3.0): Purchase Request Service
-## Phase 3 (0.3.0): Purchase Request Service
 ### Added
 - Purchase Request microservice (FastAPI, `purchase_request_db`, Alembic): create, edit, save as draft, submit, cancel and delete drafts; line items with exact decimal totals; request numbers `PR-<year>-<6 digits>`; list with filters, search, sorting and paging; summary for dashboards; document metadata; status history; optimistic locking.
 - Shared package `backend/shared/procurehub_common`: roles, permission matrix, token verification, JSON logging, request-ID middleware, health routes, database URL builder.
@@ -52,7 +65,6 @@
 ### Removed
 - `infrastructure/docker/mysql-init` (replaced by `db-bootstrap`).
 
-## Phase 2 revision: Docker configuration testing
 ## Phase 2 revision: Docker configuration testing
 ### Fixed
 - A database password containing `@` or `%` corrupted `DATABASE_URL` and the service could not connect. Compose and the service now use separate `DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` variables (`DATABASE_URL` still works).

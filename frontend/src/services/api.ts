@@ -1,6 +1,7 @@
 import type { SessionUser, TokenResponse, UserPage, UserRecord } from '@/types/auth'
 import type { Role } from '@/types/roles'
 import type { ApprovalDetail, ApprovalPage, ApprovalQuery, ApprovalsSummary, Delegate } from '@/features/approvals/types'
+import type { Comparison, EligiblePage, EvaluationInput, Evaluation, MyQuotationPage, Quotation, QuotationInput, QuotationList, Rfq, RfqCounts, RfqPage, RfqQuery, Selection, VendorRfq, VendorRfqPage } from '@/features/rfqs/types'
 import type { VendorCategory, VendorDetail, VendorInput, VendorPage, VendorQuery, VendorsSummary } from '@/features/vendors/types'
 import type { RequestDetail, RequestInput, RequestPage, RequestQuery, RequestsSummary, RequestDocument } from '@/features/purchase-requests/types'
 
@@ -175,4 +176,49 @@ export const vendorsApi = {
   reject: (id: string, version: number, reason: string) => post<VendorDetail>(`/vendors/${id}/reject`, { version, reason }),
   suspend: (id: string, version: number, reason: string) => post<VendorDetail>(`/vendors/${id}/suspend`, { version, reason }),
   reinstate: (id: string, version: number, note?: string) => post<VendorDetail>(`/vendors/${id}/reinstate`, { version, note: note || null }),
+}
+
+const put = <T>(path: string, body: unknown) => request<T>(path, { method: 'PUT', body: JSON.stringify(body) })
+export interface RfqCreateInput { purchase_request_id: string; title: string | null; description: string; requirements: string; deadline: string; items: { line_no: number; description: string; specification: string | null }[] }
+export interface RfqUpdateInput { version: number; title: string; description: string; requirements: string; deadline: string; items: { line_no: number; description: string; specification: string | null }[] }
+
+export const rfqsApi = {
+  list(query: RfqQuery) {
+    const p = new URLSearchParams({ page: String(query.page), page_size: String(query.page_size) })
+    if (query.q) p.set('q', query.q)
+    if (query.status) p.set('status', query.status)
+    if (query.sort) p.set('sort', query.sort)
+    if (query.order) p.set('order', query.order)
+    return request<RfqPage>(`/rfqs?${p}`)
+  },
+  summary: () => request<RfqCounts>('/rfqs/summary'),
+  eligible: (q: string, page: number) => request<EligiblePage>(`/rfqs/eligible-requests?${new URLSearchParams({ page: String(page), page_size: '8', ...(q ? { q } : {}) })}`),
+  get: (id: string) => request<Rfq>(`/rfqs/${id}`),
+  create: (body: RfqCreateInput) => post<Rfq>('/rfqs', body),
+  update: (id: string, body: RfqUpdateInput) => put<Rfq>(`/rfqs/${id}`, body),
+  publish: (id: string) => post<Rfq>(`/rfqs/${id}/publish`),
+  close: (id: string) => post<Rfq>(`/rfqs/${id}/close`),
+  cancel: (id: string, reason: string) => post<Rfq>(`/rfqs/${id}/cancel`, { reason }),
+  extend: (id: string, version: number, deadline: string) => post<Rfq>(`/rfqs/${id}/extend`, { version, deadline }),
+  invite: (id: string, vendorIds: string[]) => post<Rfq>(`/rfqs/${id}/invitations`, { vendor_ids: vendorIds }),
+  withdrawInvitation: (id: string, invitationId: string) => post<Rfq>(`/rfqs/${id}/invitations/${invitationId}/withdraw`),
+  quotations: (id: string) => request<QuotationList>(`/rfqs/${id}/quotations`),
+  comparison: (id: string) => request<Comparison>(`/rfqs/${id}/comparison`),
+  evaluate: (id: string, quotationId: string, body: EvaluationInput) => put<Evaluation>(`/rfqs/${id}/evaluations/${quotationId}`, body),
+  select: (id: string, body: { quotation_id: string; justification: string; acknowledge_missing_items: boolean }) => post<Selection>(`/rfqs/${id}/selection`, body),
+  revoke: (id: string, reason: string) => post<Selection>(`/rfqs/${id}/selection/revoke`, { reason }),
+  selectionHistory: (id: string) => request<{ items: Selection[] }>(`/rfqs/${id}/selection/history`),
+  // the vendor's side
+  invited: (page: number) => request<VendorRfqPage>(`/rfqs/invited?page=${page}&page_size=20`),
+  invitedRfq: (id: string) => request<VendorRfq>(`/rfqs/invited/${id}`),
+  decline: (id: string) => post<VendorRfq>(`/rfqs/invited/${id}/decline`),
+}
+
+export const quotationsApi = {
+  mine: (page: number) => request<MyQuotationPage>(`/quotations/mine?page=${page}&page_size=20`),
+  get: (id: string) => request<Quotation>(`/quotations/${id}`),
+  create: (rfqId: string, body: QuotationInput) => post<Quotation>('/quotations', { rfq_id: rfqId, ...body }),
+  update: (id: string, version: number, body: QuotationInput) => put<Quotation>(`/quotations/${id}`, { version, ...body }),
+  submit: (id: string) => post<Quotation>(`/quotations/${id}/submit`),
+  withdraw: (id: string) => post<Quotation>(`/quotations/${id}/withdraw`),
 }

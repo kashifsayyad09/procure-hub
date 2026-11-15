@@ -19,4 +19,4 @@ Build from this folder so the shared package is in the build context:
 `cd services/<service> && pytest`. Set `TEST_DATABASE_URL` to a scratch MySQL database to run the suite on MySQL instead of SQLite.
 
 ## Cross-service tests
-`tests/` starts the auth, purchase request, approval and vendor services as real processes (SQLite files, or MySQL with `E2E_AUTH_DB_URL`, `E2E_PR_DB_URL`, `E2E_APPROVAL_DB_URL`, `E2E_VENDOR_DB_URL`) and drives the request-to-decision flow and vendor onboarding over HTTP, including stopping and restarting a service. Run `cd tests && pytest`.
+`tests/` starts the auth, purchase request, approval, vendor and quotation services as real processes (SQLite files, or MySQL with `E2E_AUTH_DB_URL`, `E2E_PR_DB_URL`, `E2E_APPROVAL_DB_URL`, `E2E_VENDOR_DB_URL`, `E2E_QUOTATION_DB_URL`) and drives the request-to-decision flow, vendor onboarding and the whole RFQ-to-selection flow over HTTP, including stopping and restarting a service. Run `cd tests && pytest`.

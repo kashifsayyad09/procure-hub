@@ -1,4 +1,4 @@
-# Security notes (Phases 2 to 5)
+# Security notes (Phases 2 to 6)
 
 ## What is enforced
 - **Authorization is server-side.** Every protected route checks the token, then loads the user so a role change or suspension takes effect immediately. Route guards in React only improve navigation.
@@ -40,6 +40,16 @@
 - The internal vendor lookup returns no tax ID or owner, accepts only listed services with a service token, and is not routed by the dev proxy.
 - A duplicate tax ID answers 409 with a message, which tells a vendor that the tax ID is registered. This is a deliberate usability choice.
 
+## Added in Phase 6
+- Procurement-only and vendor-only endpoints use different permissions; employees, managers, finance and administrators are refused everywhere on RFQs and quotations (tested for every endpoint).
+- The vendor is identified from the signed token through the vendor service. A vendor id or header sent by the browser changes nothing. A vendor sees only RFQs they were invited to (404 otherwise, so another RFQ's existence is not revealed), only their own quotations, and never the budget, the internal estimates, other vendors or the award justification.
+- Sealed bids: prices are hidden from procurement until the deadline or closing, drafts are never visible to procurement, and a vendor cannot change a submission after the deadline.
+- Eligibility is re-checked at each step that matters (invite, issue, submit, select); an award needs the vendor service to be reachable, otherwise 503.
+- Money is exact decimal in the database and in the API; quantities cannot be changed by vendors; unknown body fields (status, totals, vendor, owner) are ignored.
+- Races end in 409, not 500 or a double award: unique indexes on one live RFQ per request, one active award per RFQ, one quotation and one invitation per vendor per RFQ, tested with the checks bypassed and with two real simultaneous requests on MySQL.
+- Every state change is recorded in the history and the outbox; awards keep a snapshot of the scores, weights and evaluator notes used.
+- The award contract is for listed services with a service token only; user tokens (even an administrator's) are refused.
+
 ## Known limitations (later phases)
 - **Any manager can decide any request.** There is no department or reporting-line routing yet because there is no department directory. The history records who decided.
 - Approval levels and the overdue time come from configuration, not an admin screen.
@@ -56,3 +66,4 @@
 - The Docker image and Compose stack were not run here (no Docker). The service and scripts were tested against a real MySQL 8.0 server instead.
 - `npm audit` and `pip-audit` were clean when run. Re-run before each release.
 - Vendor: documents (registration certificates, tax certificates) are not uploaded yet; only profile data is stored. A vendor registered by staff has no account link until an administrator-side linking feature exists. Suspending a vendor does not yet cancel anything in flight (no RFQs or orders exist). Notifications about verification arrive in Phase 10.
+- RFQs and quotations: no attachments (specification documents, certificates) yet; vendors are not told about invitations or results until Phase 10 (the events are stored); one RFQ per request at a time and no partial awards or splitting an order between suppliers; no currency conversion; the evaluation criteria and weights are fixed in code; an award can be revoked even though no purchase order exists yet (Phase 7 will refuse it once one does).

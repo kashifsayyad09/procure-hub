@@ -35,6 +35,7 @@ services:
       PURCHASE_REQUEST_DB_PASSWORD: ${PURCHASE_REQUEST_DB_PASSWORD:?Set PURCHASE_REQUEST_DB_PASSWORD in .env}
       APPROVAL_DB_PASSWORD: ${APPROVAL_DB_PASSWORD:?Set APPROVAL_DB_PASSWORD in .env}
       VENDOR_DB_PASSWORD: ${VENDOR_DB_PASSWORD:?Set VENDOR_DB_PASSWORD in .env}
+      QUOTATION_DB_PASSWORD: ${QUOTATION_DB_PASSWORD:?Set QUOTATION_DB_PASSWORD in .env}
     volumes:
       - ./infrastructure/docker/db-bootstrap:/bootstrap:ro
     depends_on:
@@ -152,6 +153,35 @@ services:
       - "127.0.0.1:8004:8004"
     depends_on:
       vendor-migrate:
+        condition: service_completed_successfully
+
+  quotation-migrate:
+    build: { context: ./backend, dockerfile: services/quotation-service/Dockerfile }
+    command: ["alembic", "upgrade", "head"]
+    environment:
+      <<: *db-env
+      DB_NAME: quotation_db
+      DB_USER: quotation_svc
+      DB_PASSWORD: ${QUOTATION_DB_PASSWORD}
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
+    restart: "no"
+
+  quotation-service:
+    build: { context: ./backend, dockerfile: services/quotation-service/Dockerfile }
+    restart: unless-stopped
+    environment:
+      <<: *db-env
+      DB_NAME: quotation_db
+      DB_USER: quotation_svc
+      DB_PASSWORD: ${QUOTATION_DB_PASSWORD}
+      VENDOR_SERVICE_URL: http://vendor-service:8004
+      PURCHASE_REQUEST_SERVICE_URL: http://purchase-request-service:8002
+    ports:
+      - "127.0.0.1:8005:8005"
+    depends_on:
+      quotation-migrate:
         condition: service_completed_successfully
 
 volumes:

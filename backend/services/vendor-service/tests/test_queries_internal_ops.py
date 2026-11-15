@@ -213,3 +213,12 @@ def test_migration_on_a_real_mysql_server(monkeypatch):
     command.downgrade(cfg, "base")
     with eng.begin() as conn:
         conn.exec_driver_sql("DROP TABLE IF EXISTS alembic_version")
+
+
+def test_internal_lookup_by_owner_turns_a_signed_in_user_into_a_vendor(client, directory):
+    r = client.get("/internal/v1/vendors/by-owner/ven-a", headers=svc())
+    assert r.status_code == 200 and r.json()["id"] == directory["alpha"]["id"] and r.json()["status"] == "verified"
+    assert "owner_id" not in r.text
+    assert client.get("/internal/v1/vendors/by-owner/nobody", headers=svc()).status_code == 404
+    assert client.get("/internal/v1/vendors/by-owner/ven-a", headers=ADMIN).status_code == 401
+    assert client.get("/internal/v1/vendors/by-owner/ven-a", headers=svc("approval-service")).status_code == 401

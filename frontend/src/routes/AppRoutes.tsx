@@ -14,6 +14,14 @@ const Procurement = lazy(() => import('@/pages/procurement/ProcurementDashboard'
 const Vendor = lazy(() => import('@/pages/vendor/VendorDashboard'))
 const VendorProfile = lazy(() => import('@/pages/vendor/VendorProfilePage'))
 const VendorProfileForm = lazy(() => import('@/pages/vendor/VendorProfileFormPage'))
+const Rfqs = lazy(() => import('@/pages/procurement/RfqsPage'))
+const RfqNew = lazy(() => import('@/pages/procurement/RfqNewPage'))
+const RfqDetail = lazy(() => import('@/pages/procurement/RfqDetailPage'))
+const RfqEdit = lazy(() => import('@/pages/procurement/RfqEditPage'))
+const RfqCompare = lazy(() => import('@/pages/procurement/RfqComparePage'))
+const VendorRfqs = lazy(() => import('@/pages/vendor/RfqsPage'))
+const VendorRfqDetail = lazy(() => import('@/pages/vendor/RfqDetailPage'))
+const QuotationForm = lazy(() => import('@/pages/vendor/QuotationFormPage'))
 const Vendors = lazy(() => import('@/pages/procurement/VendorsPage'))
 const VendorDetail = lazy(() => import('@/pages/procurement/VendorDetailPage'))
 const VendorForm = lazy(() => import('@/pages/procurement/VendorFormPage'))
@@ -62,7 +70,15 @@ export function AppRoutes() {
           <Route path="procurement/vendors/new" element={only('procurement', <VendorForm />)} />
           <Route path="procurement/vendors/:id" element={only('procurement', <VendorDetail />)} />
           <Route path="procurement/vendors/:id/edit" element={only('procurement', <VendorForm />)} />
+          <Route path="procurement/rfqs" element={only('procurement', <Rfqs />)} />
+          <Route path="procurement/rfqs/new" element={only('procurement', <RfqNew />)} />
+          <Route path="procurement/rfqs/:id" element={only('procurement', <RfqDetail />)} />
+          <Route path="procurement/rfqs/:id/edit" element={only('procurement', <RfqEdit />)} />
+          <Route path="procurement/rfqs/:id/compare" element={only('procurement', <RfqCompare />)} />
           <Route path="vendor" element={only('vendor', <Vendor />)} />
+          <Route path="vendor/rfqs" element={only('vendor', <VendorRfqs />)} />
+          <Route path="vendor/rfqs/:id" element={only('vendor', <VendorRfqDetail />)} />
+          <Route path="vendor/rfqs/:id/quote" element={only('vendor', <QuotationForm />)} />
           <Route path="vendor/profile" element={only('vendor', <VendorProfile />)} />
           <Route path="vendor/profile/edit" element={only('vendor', <VendorProfileForm />)} />
           <Route path="finance" element={only('finance', <Finance />)} />

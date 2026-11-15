@@ -1,18 +1,20 @@
-# Next phase: Phase 6, RFQ and Quotation Service
+# Next phase: Phase 7, Purchase Order Service
 
-Objective: Quotation microservice (FastAPI, `quotation_db`, Alembic): RFQ creation from approved purchase requests, vendor invitations, vendor quotation submission with line items, quotation comparison dashboard, supplier evaluation, supplier selection records, workflow integration tests.
+Objective: Purchase Order microservice (FastAPI, `purchase_order_db`, Alembic): create a purchase order from an awarded RFQ, PO numbering, line items, vendor confirmation, PO document generation, order lifecycle, order tracking dashboard, API and integration tests.
 
 Decisions to settle first:
-- RFQ source: an RFQ copies a snapshot of an approved request's items (read through the Purchase Request service API, as procurement already can). Decide whether one request can have several RFQs, and what happens to an RFQ if the request is later cancelled.
-- Invitations: only vendors whose status is `verified` may be invited. The Vendor service already exposes `POST /internal/v1/vendors/lookup` (service name `quotation-service` is on its allowed list). Decide how invitations reach vendors before notifications exist (Phase 10): the vendor portal lists RFQs they were invited to (`rfq:read_invited`).
-- Evaluation: how quotations are scored (price, delivery time, vendor terms from the vendor profile) and who may select the winner (`rfq:manage`, `quotation:compare`).
-- Vendor suspended or changed after an invitation: recommended that submitting a quotation re-checks status.
+- Source: the order is built from `GET /internal/v1/rfqs/{rfq_id}/award` (`AwardRef`, service name `purchase-order-service` is already on the allowed list). Copy the lines, quantities, unit prices, currency, terms and payment terms into the order as a snapshot. Decide who may create the order (`purchase_order:create`, procurement) and whether it is automatic on award or a deliberate step (recommended: deliberate, one order per award).
+- Locking the award: the quotation service lets procurement revoke an award. Once an order exists a revoke must be refused. Add an internal endpoint or event in Phase 7 (for example the order service tells the quotation service "this RFQ has an order", or the quotation service asks before revoking). Document it and test it.
+- Vendor confirmation: vendors read their orders through the vendor-by-owner lookup (same pattern as quotations: `GET /internal/v1/vendors/by-owner/{user_id}`); confirm, or reject with a reason. A suspended vendor can read but not confirm (decide).
+- PO document: generate a PDF (see the `pdf` skill) or HTML; store the file path/metadata, not binary blobs in MySQL (S3 arrives in Phase 15, so use a local directory behind an interface now).
+- Statuses: draft, issued, confirmed, rejected, partially_received, received, closed, cancelled. Receiving (Phase 8) and invoices (Phase 9) will move the later ones; define the events they will send.
 
-Reuse from Phase 5:
-- Service layout and test patterns in `backend/services/vendor-service` (app factory, `service.py`, ownership scope, version-checked commands, unique-index race handling, migration tests, MySQL option, mutation-style rule tests, outbox).
-- `backend/shared/procurehub_common`: `contracts/vendor.py` (`VendorRef`, `VendorLookup`), `service_client`, service tokens, permissions (`rfq:manage`, `rfq:read_invited`, `quotation:submit`, `quotation:compare` already declared).
-- `infrastructure/docker/db-bootstrap/bootstrap.sh` (`ensure_user quotation_svc quotation_db QUOTATION_DB_PASSWORD`), `.env.example`, the `db-init` service, a compose migrate and service pair on port 8005, a Vite proxy rule for `/api/v1/rfqs` and `/api/v1/quotations`.
-- `backend/tests`: add the service to the `Stack` and an RFQ scenario to the end-to-end tests (request approved, RFQ, invited verified vendor quotes, selection).
-- Frontend: `features/vendors` (status badge, directory and detail patterns, multi-step form with a field array, review dialogs with reasons), `DataTable`, `Modal`, `Drawer`, `TrendChart`; replace the procurement sample dashboard and add RFQ nav items (`navConfig.ts`).
+Reuse from Phase 6:
+- Service layout and test patterns in `backend/services/quotation-service` (app factory, `service.py`, `common.py` for outside calls through `ServiceClient` with `httpx.MockTransport` fakes, version-checked commands, unique-index race handling with `commit(...)` translation, outbox, migration tests, MySQL option, mutation-style rule tests, clock fixture for deadlines).
+- `backend/shared/procurehub_common`: `contracts/quotation.py` (`AwardRef`, `AwardItem`), `contracts/purchase_request.py`, `contracts/vendor.py`, `service_client`, service tokens, permissions (`purchase_order:*` and `order:confirm` already declared; check `permissions.py`).
+- Money: `DECIMAL`, `line_total` rounding half up (`app/common.py`), exact-decimal frontend helper `features/rfqs/money.ts`.
+- `infrastructure/docker/db-bootstrap/bootstrap.sh` (`ensure_user purchase_order_svc purchase_order_db PURCHASE_ORDER_DB_PASSWORD`), `.env.example`, the `db-init` service, a compose migrate and service pair on port 8006, a Vite proxy rule for `/api/v1/purchase-orders`.
+- `backend/tests`: add the service to the `Stack` and a scenario that continues the Phase 6 flow (award, then purchase order, vendor confirms).
+- Frontend: `features/rfqs` (status badges, dialogs, forms), `features/vendors`, `DataTable`, `Modal`, list and detail page patterns, `navConfig.ts` (the procurement and vendor "Orders" entries); replace the procurement sample dashboard with real figures if time allows.
 
-Constraints: no shared models or cross-database joins; ownership and role rules enforced in the service; vendors see only RFQs they were invited to and only their own quotations; no hardcoded secrets; keep one cumulative ZIP.
+Constraints: no shared models or cross-database joins; ownership and role rules enforced in the service; vendors see only their own orders; no hardcoded secrets; keep one cumulative ZIP; do not start Phase 8.

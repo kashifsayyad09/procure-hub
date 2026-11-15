@@ -110,3 +110,54 @@ Base path `/api/v1/vendors`. Same bearer token as the other services. Vendor use
 
 ## Internal API (service to service)
 `GET /internal/v1/vendors/{id}` and `POST /internal/v1/vendors/lookup {ids}` (up to 100) return a `VendorRef` (`procurehub_common.contracts.vendor`): id, number, names, `status`, country, currency, payment terms, categories, primary contact. No tax ID, no owner. Unknown ids are left out of the lookup. Callers must be on the allowed list (quotation, purchase order, invoice, SI-Talker, MCP) and use a service token; user tokens, even an administrator's, are refused (401). Disabled (503) when `INTERNAL_JWT_SECRET` is not set. Phase 6 uses it to refuse RFQ invitations to vendors that are not `verified`.
+
+# API (Phase 6: quotation service)
+
+Base paths `/api/v1/rfqs` and `/api/v1/quotations`. Same bearer token as the other services. Procurement holds `rfq:manage` and `quotation:compare`; vendors hold `rfq:read_invited` and `quotation:submit`. Employees, managers, finance and administrators hold none of these and get 403 everywhere (administrators follow the existing policy: no sourcing permissions).
+Dates are sent in UTC with a `Z`. Money is sent as exact decimal strings.
+
+**Statuses.** RFQ: `draft`, `issued`, `closed`, `awarded`, `cancelled`. Quotation: `draft`, `submitted`, `selected`, `not_selected`. Invitation: `invited`, `declined`, `withdrawn`.
+
+## Procurement
+| Method and path | Result |
+|---|---|
+| `GET /rfqs/eligible-requests?q&page&page_size` | approved purchase requests (read from the purchase request service), each marked with any RFQ already in progress |
+| `POST /rfqs` `{purchase_request_id, title?, description, requirements, deadline, items?}` | creates a draft from an approved request. Items are copied from the request; `items` can only clarify description and specification, never quantity or unit. 422 if the request is not approved; 409 if it already has a live RFQ |
+| `GET /rfqs`, `GET /rfqs/summary` | list (`status`, `q`, `sort`, `order`, `page`, `page_size`) and counts |
+| `GET /rfqs/{id}` | the RFQ with items (including internal estimates), invitations (with whether each vendor has a draft or submitted quotation, never amounts), history, `actions` the caller may take, and the award if any |
+| `PUT /rfqs/{id}` `{version, ...}` | edit a draft (409 if stale or not a draft) |
+| `POST /rfqs/{id}/invitations` `{vendor_ids}` | invite verified vendors (all or nothing). 409 if any is already invited; 422 for unknown or unverified vendors. Sent immediately only if the RFQ is already issued |
+| `POST /rfqs/{id}/invitations/{invitation_id}/withdraw` | take an invitation back (not once the vendor submitted) |
+| `POST /rfqs/{id}/publish` | draft to issued. Needs a vendor invited, a deadline far enough ahead, and every invited vendor still verified |
+| `POST /rfqs/{id}/extend` `{version, deadline}` | later deadline, only while the current one has not passed |
+| `POST /rfqs/{id}/close` | issued to closed (stops quotations, opens prices) |
+| `POST /rfqs/{id}/cancel` `{reason}` | frees the purchase request. Not once awarded |
+| `GET /rfqs/{id}/quotations` | one row per invited vendor; amounts are `null` while prices are sealed |
+| `GET /rfqs/{id}/comparison` | 409 while sealed. Otherwise every submitted quotation with totals, lines, missing items, vendor status now, scores, rank, lowest price, fastest, budget check, evaluation, per currency |
+| `PUT /rfqs/{id}/evaluations/{quotation_id}` `{compliance_score?, compliance_note?, terms_score?, terms_note?, version?}` | the evaluator's judgements (0 to 10; a score needs a note; `version` required to change an existing one) |
+| `POST /rfqs/{id}/selection` `{quotation_id, justification, acknowledge_missing_items}` | award. Needs the RFQ closed (or issued past its deadline, which it closes), a submitted quotation, the vendor verified now, a justification of 10+ characters, and for an incomplete quotation the acknowledgement |
+| `GET /rfqs/{id}/selection`, `GET /rfqs/{id}/selection/history` | the active award, and every award in order |
+| `POST /rfqs/{id}/selection/revoke` `{reason}` | withdraws the award; the RFQ returns to closed |
+
+## Vendor
+| Method and path | Result |
+|---|---|
+| `GET /rfqs/invited`, `GET /rfqs/invited/{id}` | only RFQs this vendor was invited to and that have been issued (404 otherwise). No budget, estimates or other vendors. `can_quote` and `blocked_reason` say whether and why not |
+| `POST /rfqs/invited/{id}/decline` | decline an invitation |
+| `POST /quotations` `{rfq_id, currency, lead_time_days, valid_until, payment_terms_days, terms, items}` | start a draft. A line is created for every RFQ item; unpriced lines mean "not quoted". One quotation per vendor per RFQ |
+| `PUT /quotations/{id}` `{version, ...}` | edit a draft |
+| `POST /quotations/{id}/submit` | needs lead time, validity (at least until the deadline) and one priced item. Before the deadline only. A second submit is a 409 |
+| `POST /quotations/{id}/withdraw` | back to draft to make changes, before the deadline |
+| `GET /quotations/mine`, `GET /quotations/{id}` | the vendor's own. Procurement may read a submitted one only once prices are open |
+
+## Scoring
+Price 40 (the lowest total in the same currency scores 100, others `100 x lowest / total`), delivery 20 (`100 x shortest lead time / lead time`), compliance 25 and commercial terms 15 (the evaluator's 0 to 10, counted as 0 to 100). Overall = weighted sum, rounded half up to 2 decimals; it exists only when all four parts exist. Only quotations that price every item are scored on price and delivery; a partial quotation shows "some items are not quoted" and can be selected only with an explicit acknowledgement. Ties go to the lower total, then the earlier submission. Vendor eligibility is not a score: the vendor must be verified at the moment of selection.
+
+## Internal API
+`GET /internal/v1/rfqs/{rfq_id}/award` returns an `AwardRef` (`procurehub_common.contracts.quotation`): the selection, RFQ and request numbers, vendor, quotation, currency, total, lead time, validity, payment terms, terms, every line (quantity, unit, unit price, line total), the justification and who selected. 404 while there is no active award or after a revoke. Callers: purchase order, SI-Talker, MCP (service token only).
+
+## Calls this service makes (service token)
+Purchase request service: `GET /internal/v1/purchase-requests/{id}` and `/approved` (new in this phase, `PurchaseRequestRef` contract). Vendor service: `POST /internal/v1/vendors/lookup` and `GET /internal/v1/vendors/by-owner/{user_id}` (new in this phase). A service that is down gives a 503; reading this service's own data does not need them.
+
+## Notification integration points (Phase 10)
+Outbox events in `quotation_events`: `rfq_created`, `rfq_updated`, `rfq_issued` (with the invited vendor ids), `vendors_invited`, `invitation_withdrawn`, `invitation_declined`, `rfq_deadline_extended`, `rfq_closed`, `rfq_cancelled`, `quotation_drafted`, `quotation_submitted`, `quotation_withdrawn`, `quotation_evaluated`, `supplier_selected`, `selection_revoked`.

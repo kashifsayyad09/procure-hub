@@ -22,6 +22,15 @@ router = APIRouter(prefix="/internal/v1", tags=["internal"], include_in_schema=F
 CALLER = Depends(service_caller(_secret, ALLOWED_CALLERS))
 
 
+@router.get("/vendors/by-owner/{user_id}", response_model=VendorRef)
+def get_by_owner(user_id: str, _: str = CALLER, db: Session = Depends(get_db)):
+    """The vendor record owned by an auth user. Lets a service turn a signed-in vendor user into a vendor without trusting an id sent by the browser."""
+    v = db.scalar(select(Vendor).where(Vendor.owner_id == user_id))
+    if v is None:
+        raise HTTPException(404, "No vendor is registered for this user.")
+    return service.to_ref(v)
+
+
 @router.get("/vendors/{vendor_id}", response_model=VendorRef)
 def get_vendor(vendor_id: str, _: str = CALLER, db: Session = Depends(get_db)):
     v = db.scalar(select(Vendor).where(Vendor.id == vendor_id))

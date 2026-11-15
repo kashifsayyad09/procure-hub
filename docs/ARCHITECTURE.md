@@ -56,3 +56,11 @@ employee --submit--> purchase-request-service --register (service token)--> appr
 - **For later services:** an internal lookup (`VendorRef` contract in `procurehub_common`) lets the Quotation service check vendor status without touching `vendor_db`.
 - **Frontend:** `features/vendors` (types, labels, status badge, shared profile view, form, action buttons), vendor pages under `/app/vendor`, staff pages under `/app/procurement/vendors` and `/app/admin/vendors` (same components, the base path comes from the role). The server returns the list of `actions` the caller may take, so screens never offer what will be refused.
 - **Dev proxy:** `/api/v1/vendors` goes to port 8004.
+
+## Phase 6 additions: RFQs and quotations
+- **quotation-service** (port 8005, `quotation_db`) has the same layout as the other services, plus `scoring.py` (pure functions), `evaluation.py` (comparison, evaluation, selection) and `common.py` (calls to other services).
+- **Calls out, never into other databases:** the purchase request service (approved requests, via a new internal API and `PurchaseRequestRef` contract) and the vendor service (lookup of vendor status, and by-owner lookup that turns a signed-in vendor user into a vendor).
+- **Calls in:** the purchase order service (Phase 7) reads an award through `AwardRef`.
+- **Sealed bids** are enforced by the service, not the screens: prices are `null` or 409 until the deadline passes or the RFQ is closed; vendors never receive budgets or other vendors' data.
+- **Frontend:** `features/rfqs` (types, labels, badges, form, invite and compare dialogs, exact-decimal helper), procurement pages under `/app/procurement/rfqs`, vendor pages under `/app/vendor/rfqs`. The server returns the `actions` each caller may take. Dev proxy sends `/api/v1/rfqs` and `/api/v1/quotations` to port 8005.
+- **Lifecycle:** RFQ draft, issued, closed, awarded (cancelled from draft, issued or closed; revoke returns awarded to closed). Quotation draft, submitted (back to draft by withdrawing), selected or not selected. An RFQ that is issued and past its deadline behaves as closed for comparison and selection (selecting closes it).
